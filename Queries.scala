@@ -4,10 +4,7 @@ package gr.cslab.ntua.musqle
   * Created by Victor on 23/7/2016.
   */
 
-object Queries {
-
-
-  val join1 =
+val join1 =
     """
       |select c_name, n_name
       |from customer, nation
@@ -17,7 +14,7 @@ object Queries {
 
   val join2 =
     """
-      |select *
+      |select c_name, o_orderstatus
       |from customer, orders
       |where c_custkey = o_orderkey
     """.stripMargin
@@ -25,7 +22,7 @@ object Queries {
 
   val join3 =
     """
-      |select *
+      |select c_name, o_totalprice
       |from orders, customer, nation
       |where o_custkey = c_custkey
       |and c_nationkey = n_nationkey
@@ -33,7 +30,7 @@ object Queries {
 
   val join4 =
     """
-      |select *
+      |select l_linenumber, l_quantity
       |from lineitem, orders, customer, nation
       |where l_orderkey = o_orderkey
       |and o_custkey = c_custkey
@@ -42,7 +39,7 @@ object Queries {
 
   val join5 =
     """
-      |select *
+      |select l_linenumber
       |from part, lineitem, orders, customer, nation
       |where p_partkey = l_partkey
       |and l_orderkey = o_orderkey
@@ -52,7 +49,7 @@ object Queries {
 
   val join6 =
     """
-      |select *
+      |select o_orderdate, o_totalprice
       |from customer, nation, orders, lineitem, part, partsupp
       |where c_nationkey = n_nationkey
       |and c_custkey = o_custkey
@@ -63,7 +60,7 @@ object Queries {
 
   val join7 =
     """
-      |select * from customer, nation, orders, lineitem, part, partsupp, supplier
+      |select ps_availqty from customer, nation, orders, lineitem, part, partsupp, supplier
       |where c_nationkey = n_nationkey
       |and c_custkey = o_orderkey
       |and l_orderkey = o_orderkey
@@ -90,7 +87,7 @@ object Queries {
 
   val joinWithFilter1 =
     """
-      |select *
+      |select r_name
       |from customer, nation, region,orders
       |where c_nationkey = n_nationkey
       |and n_regionkey = r_regionkey
@@ -101,7 +98,7 @@ object Queries {
 
   val joinWithFilter2 =
     """
-      |select *
+      |select l_discount
       |from lineitem, orders, customer, nation, region
       |where l_orderkey = o_orderkey
       |and o_custkey = c_custkey
@@ -122,7 +119,7 @@ object Queries {
 
   val joinWithFilter4 =
     """
-      |select *
+      |select c_name
       |from customer, nation, region,orders
       |where c_nationkey = n_nationkey
       |and n_regionkey = r_regionkey
@@ -143,7 +140,7 @@ object Queries {
 
   val joinWithFilter6 =
     """
-      |select *
+      |select l_partkey
       |from lineitem, orders, partsupp, part
       |where l_orderkey = o_orderkey
       |and l_partkey = ps_partkey
@@ -153,7 +150,7 @@ object Queries {
 
   val joinWithFilter7 =
     """
-      |select *
+      |select o_orderdate
       |from partsupp, part, lineitem, orders, customer, nation
       |where p_partkey = ps_partkey
       |and p_partkey = l_partkey
@@ -166,7 +163,7 @@ object Queries {
 
   val joinWithFilter8 =
     """
-      |select *
+      |select l_discount
       |from lineitem, orders, partsupp, part
       |where l_orderkey = o_orderkey
       |and l_partkey = ps_partkey
