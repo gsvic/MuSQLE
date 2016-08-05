@@ -4,40 +4,40 @@ package gr.cslab.ntua.musqle
   * Created by Victor on 23/7/2016.
   */
 
-val join1 =
+val q0 =
     """
-      |select c_name, n_name
+      |select c_name
       |from customer, nation
       |where c_nationkey = n_nationkey
       |""".stripMargin
 
 
-  val join2 =
+  val q1 =
     """
-      |select c_name, o_orderstatus
+      |select c_name
       |from customer, orders
       |where c_custkey = o_orderkey
     """.stripMargin
 
 
-  val join3 =
+  val q2 =
     """
-      |select c_name, o_totalprice
+      |select c_name
       |from orders, customer, nation
       |where o_custkey = c_custkey
       |and c_nationkey = n_nationkey
     """.stripMargin
 
-  val join4 =
+  val q3 =
     """
-      |select l_linenumber, l_quantity
+      |select l_linenumber
       |from lineitem, orders, customer, nation
       |where l_orderkey = o_orderkey
       |and o_custkey = c_custkey
       |and c_nationkey = n_nationkey
     """.stripMargin
 
-  val join5 =
+  val q4 =
     """
       |select l_linenumber
       |from part, lineitem, orders, customer, nation
@@ -47,9 +47,9 @@ val join1 =
       |and c_nationkey = n_nationkey
     """.stripMargin
 
-  val join6 =
+  val q5 =
     """
-      |select o_orderdate, o_totalprice
+      |select o_orderdate
       |from customer, nation, orders, lineitem, part, partsupp
       |where c_nationkey = n_nationkey
       |and c_custkey = o_custkey
@@ -58,9 +58,10 @@ val join1 =
       |and p_partkey = ps_partkey
     """.stripMargin
 
-  val join7 =
+  val q6 =
     """
-      |select ps_availqty from customer, nation, orders, lineitem, part, partsupp, supplier
+      |select ps_availqty
+      |from customer, nation, orders, lineitem, part, partsupp, supplier
       |where c_nationkey = n_nationkey
       |and c_custkey = o_orderkey
       |and l_orderkey = o_orderkey
@@ -69,23 +70,23 @@ val join1 =
       |and s_suppkey = ps_suppkey
     """.stripMargin
 
-  val join8 =
+  val q7 =
     """
-      |select c_name, r_name, n_name
+      |select c_name
       |from customer, nation, region
       |where c_nationkey = n_nationkey
       |and n_regionkey = r_regionkey
       |""".stripMargin
 
-  val join9 =
+  val q8 =
     """
-      |select p_name, p_brand, ps_supplycost
+      |select p_name
       |from part, partsupp
       |where p_partkey = ps_partkey
       |""".stripMargin
 
 
-  val joinWithFilter1 =
+  val q9 =
     """
       |select r_name
       |from customer, nation, region,orders
@@ -96,7 +97,7 @@ val join1 =
       |and c_custkey < 200
       |""".stripMargin
 
-  val joinWithFilter2 =
+  val q10 =
     """
       |select l_discount
       |from lineitem, orders, customer, nation, region
@@ -107,7 +108,7 @@ val join1 =
       |and r_name = 'AFRICA'
     """.stripMargin
 
-  val joinWithFilter3 =
+  val q11 =
     """
       |select c_name
       |from customer, orders, lineitem, nation
@@ -117,7 +118,7 @@ val join1 =
       |and c_nationkey = 8
     """.stripMargin
 
-  val joinWithFilter4 =
+  val q12 =
     """
       |select c_name
       |from customer, nation, region,orders
@@ -128,17 +129,17 @@ val join1 =
       |""".stripMargin
 
   //Possible Data Movement from HDFS to Postgres
-  val joinWithFilter5 =
+  val q13 =
     """
       |select o_orderkey
       |from orders, customer, nation, region
       |where o_custkey = c_custkey
       |and c_nationkey = n_nationkey
       |and n_regionkey = r_regionkey
-      |and o_orderkey > 1
+      |and o_orderkey < 100
     """.stripMargin
 
-  val joinWithFilter6 =
+  val q14 =
     """
       |select l_partkey
       |from lineitem, orders, partsupp, part
@@ -148,7 +149,7 @@ val join1 =
       |and l_orderkey = 5
     """.stripMargin
 
-  val joinWithFilter7 =
+  val q15 =
     """
       |select o_orderdate
       |from partsupp, part, lineitem, orders, customer, nation
@@ -157,27 +158,24 @@ val join1 =
       |and l_orderkey = o_orderkey
       |and o_custkey = c_custkey
       |and c_nationkey = n_nationkey
-      |and c_custkey < 200
+      |and p_retailprice < 2000
       |and n_name = 'AFRICA'
     """.stripMargin
 
-  val joinWithFilter8 =
+  val q16 =
     """
-      |select l_discount
-      |from lineitem, orders, partsupp, part
-      |where l_orderkey = o_orderkey
-      |and l_partkey = ps_partkey
-      |and p_partkey = ps_partkey
-      |and ps_supplycost < 20
+      |select n_nationkey
+      |from partsupp, supplier, nation
+      |where ps_suppkey = s_suppkey
+      |and s_nationkey = n_nationkey
+      |and n_name = 'EUROPE'
     """.stripMargin
 
-  val joinWithFilter9 =
+  val q17 =
     """
-      |select p_name, s_name, s_address
+      |select p_name
       |from part, partsupp, supplier
       |where p_partkey = ps_partkey
       |and ps_suppkey = s_suppkey
       |and p_partkey = 3
       |""".stripMargin
-
-}
