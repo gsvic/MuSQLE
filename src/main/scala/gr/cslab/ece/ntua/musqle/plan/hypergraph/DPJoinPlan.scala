@@ -7,6 +7,7 @@ abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engin
                           var cost: Double, val info: QueryInfo) {
   final val resultNumber: Int = DPJoinPlan.getResultNumber
   final val tmpName: String = s"res$resultNumber"
+  final val isJoin: Boolean = (left != null && right !=null)
 
   val toSQL: String = "Some SQL Text..."
   def explain() = println(this.print(""))

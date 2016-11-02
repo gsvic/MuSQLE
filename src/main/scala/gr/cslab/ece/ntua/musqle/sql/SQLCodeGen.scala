@@ -2,9 +2,11 @@ package gr.cslab.ece.ntua.musqle.sql
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join}
 import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEScan}
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
+import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo,
+  Expression, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
 import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.types.StringType
 
 import scala.collection.mutable
 
@@ -14,11 +16,9 @@ class SQLCodeGen(val info: MQueryInfo) {
     val tableName = matchTableName(scan.vertex.plan)
     val filter = makeCondition(scan.vertex.filter.condition)
 
-    s"""
-      |SELECT *
-      |FROM $tableName
-      |WHERE $filter
-    """.stripMargin
+    s"""SELECT *
+       |FROM $tableName t${scan.vertex.id}
+       |WHERE $filter""".stripMargin
   }
 
   def genSQL(plan: MuSQLEJoin): String = {
@@ -30,9 +30,8 @@ class SQLCodeGen(val info: MQueryInfo) {
     }
 
     var SQL =
-      s"""
-        |SELECT *
-        |FROM """.stripMargin
+      s"""SELECT *
+         |FROM """.stripMargin
 
     SQL += {
       val vertex = tables.toList(0)
@@ -44,12 +43,26 @@ class SQLCodeGen(val info: MQueryInfo) {
 
     tables.toList.slice(1, tables.size).foreach{table =>
       val name = matchTableName(table.plan)
-      SQL += s", \n$name t${table.id}"
+      SQL += s""", $name t${table.id}"""
     }
 
+    var WHERE = ""
 
-    SQL += "\nWHERE " + conditions.map(makeCondition).reduce(_ + " \nAND " + _)
-    SQL += "\nAND " + filters.map(f => makeCondition(f.condition)).reduce(_ + " \nAND " + _)
+    if (conditions.size > 0) {
+      WHERE += "\nWHERE " + conditions.map(makeCondition).reduce(_ + "\nAND " + _)
+    }
+
+    if (filters.size > 0) {
+      val f =  filters.map(f => makeCondition(f.condition)).reduce(_ + "\nAND " + _)
+      if (WHERE.equals("")) {
+        WHERE += "\nWHERE " + f
+      }
+      else {
+        WHERE += "\nAND " + f
+      }
+    }
+
+    SQL += WHERE
     SQL
   }
 
@@ -63,18 +76,29 @@ class SQLCodeGen(val info: MQueryInfo) {
               val key = eq.left.toString().split("#")(0)
               s"t$id.$key"
             }
-            case literal: Literal => {literal.value}
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
+
           }
         }
 
         val right = {
-          eq.left match{
+          eq.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(eq.left.toString()).get.id
-              val key = eq.left.toString().split("#")(0)
+              val id = info.attributeToVertex.get(eq.right.toString()).get.id
+              val key = eq.right.toString().split("#")(0)
               s"t$id.$key"
             }
-            case literal: Literal => {literal.value}
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
           }
         }
 
@@ -88,22 +112,33 @@ class SQLCodeGen(val info: MQueryInfo) {
             val key = lt.left.toString().split("#")(0)
             s"t$id.$key"
           }
-          case literal: Literal => {literal.value}
+          case literal: Literal => {
+            literal.dataType match {
+              case StringType => s"""'${literal.value}'"""
+              case _ => literal.value
+            }
+          }
         }
       }
 
         val right = {
-          lt.left match{
+          lt.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(lt.left.toString()).get.id
-              val key = lt.left.toString().split("#")(0)
+              val id = info.attributeToVertex.get(lt.right.toString()).get.id
+              val key = lt.right.toString().split("#")(0)
               s"t$id.$key"
             }
-            case literal: Literal => {literal.value}
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
           }
         }
 
         return s"$left < $right"}
+
       case gt: GreaterThan => {
         val left = {
           gt.left match{
@@ -112,37 +147,116 @@ class SQLCodeGen(val info: MQueryInfo) {
               val key = gt.left.toString().split("#")(0)
               s"t$id.$key"
             }
-            case literal: Literal => {literal.value}
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
           }
         }
 
         val right = {
-          gt.left match{
+          gt.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(gt.left.toString()).get.id
-              val key = gt.left.toString().split("#")(0)
+              val id = info.attributeToVertex.get(gt.right.toString()).get.id
+              val key = gt.right.toString().split("#")(0)
               s"t$id.$key"
             }
-            case literal: Literal => {literal.value}
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
           }
         }
 
         return s"$left < $right"
       }
-      case ltoet: LessThanOrEqual =>
+      case ltoet: LessThanOrEqual => {
+        val left = {
+          ltoet.left match{
+            case ar: AttributeReference =>{
+              val id = info.attributeToVertex.get(ltoet.left.toString()).get.id
+              val key = ltoet.left.toString().split("#")(0)
+              s"t$id.$key"
+            }
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
+          }
+        }
+
+        val right = {
+          ltoet.right match{
+            case ar: AttributeReference =>{
+              val id = info.attributeToVertex.get(ltoet.right.toString()).get.id
+              val key = ltoet.right.toString().split("#")(0)
+              s"t$id.$key"
+            }
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
+          }
+        }
+
+        return s"$left < $right"
+      }
+      case gtoet: GreaterThanOrEqual => {
+        val left = {
+          gtoet.left match{
+            case ar: AttributeReference =>{
+              val id = info.attributeToVertex.get(gtoet.left.toString()).get.id
+              val key = gtoet.left.toString().split("#")(0)
+              s"t$id.$key"
+            }
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
+          }
+        }
+
+        val right = {
+          gtoet.right match{
+            case ar: AttributeReference =>{
+              val id = info.attributeToVertex.get(gtoet.right.toString()).get.id
+              val key = gtoet.right.toString().split("#")(0)
+              s"t$id.$key"
+            }
+            case literal: Literal => {
+              literal.dataType match {
+                case StringType => s"""'${literal.value}'"""
+                case _ => literal.value
+              }
+            }
+          }
+        }
+
+        return s"$left < $right"
+      }
       case and: And => makeCondition(and.left) + " AND " + makeCondition(and.right)
       case or: Or => makeCondition(or.left) + " OR " + makeCondition(or.right)
       case notNull: IsNotNull => {
         val attribute = notNull.child.asInstanceOf[AttributeReference]
         val id = info.attributeToVertex.get(attribute.toString()).get.id
         val key = attribute.name
-        s"t$id.$key NOT NULL"
+        s"t$id.$key IS NOT NULL"
       }
-      case _ => expr.sql//throw new UnsupportedOperationException()
+      case _ => throw new UnsupportedOperationException()
     }
   }
 
-  private def parseExpression()
+  private def parseExpression(){}
 
   /**
     * @return A [[mutable.HashSet]] with the tables contained in the input subquery
@@ -191,6 +305,6 @@ class SQLCodeGen(val info: MQueryInfo) {
       }
       if (flag) return plan._2
     }
-    ""
+    throw new Exception("Cannot find matching table")
   }
 }

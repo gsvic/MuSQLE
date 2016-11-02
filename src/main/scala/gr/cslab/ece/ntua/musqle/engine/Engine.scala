@@ -6,13 +6,26 @@ abstract class Engine(){
   override def equals(obj: scala.Any): Boolean = {
     this.getClass.equals(obj.getClass)
   }
-  def getMoveCost(plan: DPJoinPlan): Double = {0.0}
+  def getMoveCost(plan: DPJoinPlan): Double = {
+    println("MOVE "+this)
+    0.0
+  }
   def getQueryCost(sql: String): Double = {
-    println(s"\nQUERY=[$sql]\n")
+    println("QUERY "+this)
     2.0}
 }
 
-case class Spark() extends Engine
+case class Spark() extends Engine {
+  /*override def getQueryCost(sql: String): Double  = {
+    //TODO: Implement Spark SQL cost estimator module
+    2.0
+  }
+
+  override def getMoveCost(plan: DPJoinPlan): Double = {
+    println("Asking Spark for move")
+    0.0
+  }*/
+}
 case class Postgres() extends Engine
 
 class HDFSFormat()
