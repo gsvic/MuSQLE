@@ -10,8 +10,8 @@ import scala.collection.mutable
 class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(){
   override var queryInfo: QueryInfo = new QueryInfo()
 
-  val eng = Seq(Spark())
-  val eng2 = Seq(Postgres())
+  val eng = Seq(Spark(null))
+  val eng2 = Seq(Postgres(null))
 
   override def generateGraph(): Unit ={
     addVertex(VertexImpl(eng), List((1, Seq(2))))

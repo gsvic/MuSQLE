@@ -4,7 +4,7 @@ import java.util
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import scala.collection.JavaConversions._
 
-protected class DPTable(val engines: Seq[Engine]) {
+class DPTable(val engines: Seq[Engine]) {
   private val dptable: util.HashMap[util.BitSet, util.HashMap[Engine, DPJoinPlan]] =
     new util.HashMap[util.BitSet, util.HashMap[Engine, DPJoinPlan]]
 

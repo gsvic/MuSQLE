@@ -4,14 +4,18 @@ import java.util
 
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
-import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEScan, SparkPlanVertex}
+import gr.cslab.ece.ntua.musqle.plan.spark._
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Join, LogicalPlan}
 import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
 
 import scala.collection.JavaConversions._
 
-class DPhypSpark extends DPhyp(scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]){
+class DPhypSpark(sparkSession: SparkSession) extends
+  DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]){
+
+  override final val dptable = new DPTable(Seq())
   override var queryInfo: QueryInfo = new MQueryInfo()
   val qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
@@ -87,11 +91,9 @@ class DPhypSpark extends DPhyp(scanClass = classOf[MuSQLEScan], joinClass = clas
     }
   }
   private def getEngine(logicalRelation: LogicalRelation): Engine = {
-    logicalRelation.relation match{
-      case hdfs: HadoopFsRelation => {
-          Engine.SPARK
-      }
-    }
+    if (logicalRelation.relation.toString.contains("JDBC")) { Engine.POSTGRES(sparkSession)}
+    else { Engine.SPARK(sparkSession) }
+
   }
 
   private def extractAttributeReference(expr: Expression): AttributeReference ={

@@ -30,7 +30,8 @@ object DPJoinPlan{
   * */
 class Scan(val table: Vertex, override val engine: Engine, override val info: QueryInfo)
   extends DPJoinPlan(null, null, engine, 0, info){
-  override def print(indent: String): String = s"$indent*$this (tID: ${table.id}) [${this.resultNumber}] [${getCost}] [$engine]"
+  override def print(indent: String): String = s"$indent*$this (tID: ${table.id}) [${this.resultNumber}] " +
+    s"Cost: [${getCost}], Engine: [$engine]"
   override def getCost: Double = engine.getQueryCost(this.toSQL)
 }
 
@@ -47,7 +48,7 @@ class Join(override val left: DPJoinPlan, override val right: DPJoinPlan, val va
 
   override def print(indent: String): String = s"${indent}" +
     s"Join(${this.getClass.getSimpleName})<${left.resultNumber}, ${right.resultNumber}> " +
-    s"on ${vars} [$getCost] [$engine] [$resultNumber]" +
+    s"on ${vars} Cost: [$getCost], Engine: [$engine], ID: [$resultNumber]" +
     s"\n${left.print(indent + "\t")}" +
     s"\n${right.print(indent + "\t")}"
 

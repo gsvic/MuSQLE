@@ -1,9 +1,8 @@
 package gr.cslab.ece.ntua.musqle.sql
 
-import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join}
-import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEScan}
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo,
-  Expression, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
+import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
+import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEMove, MuSQLEScan}
+import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
 import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
@@ -288,6 +287,7 @@ class SQLCodeGen(val info: MQueryInfo) {
           hashSet.add(filter)
         }
       }
+      case move: Move => {}
       case _ => throw new Exception()
     }
     hashSet
