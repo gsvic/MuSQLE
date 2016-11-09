@@ -28,6 +28,14 @@
       <version>2.17.3</version>
     </dependency>
 
+    <!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>9.4.1211.jre7</version>
+    </dependency>
+
+
     <!-- scala -->
     <dependency>
       <groupId>org.scala-lang</groupId>

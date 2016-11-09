@@ -7,6 +7,7 @@ import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.sql.SparkPlanGenerator
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
+import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 class MusqleContext {
@@ -33,7 +34,6 @@ class MusqleContext {
       }
     }
   }
-    println(tableDF.queryExecution.sparkPlan)
     planner.qInfo.planToTableName.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tableEntry.tableName)
     tableDF.createOrReplaceTempView(tableEntry.tableName)
   }
@@ -44,17 +44,26 @@ class MusqleContext {
     val optPlan = df.queryExecution.optimizedPlan
     planner.setLogicalPlan(optPlan)
 
-
     val p = planner.plan()
     val planGenerator = new SparkPlanGenerator(sparkSession)
     val sparkLogical = planGenerator.toSparkLogicalPlan(p)
-    println(sparkLogical)
+
+    //val qe = new QueryExecution(sparkSession, sparkLogical)
     val dataFrame = new Dataset[Row](sparkSession, sparkLogical, RowEncoder(sparkLogical.schema))
 
-    println(df.queryExecution.sparkPlan)
-    println(dataFrame.queryExecution.sparkPlan)
+    val a = {
+      val start = System.currentTimeMillis()
+      df.count()
+      System.currentTimeMillis() - start
+    }
+    val b = {
+      val start = System.currentTimeMillis()
+      dataFrame.count()
+      System.currentTimeMillis() - start
+    }
 
-    p.explain()
+    println(s"Spark: ${a / 1000.0}\nMuSQLE: ${b / 1000.0}")
+
 
     dataFrame
   }
@@ -63,9 +72,8 @@ class MusqleContext {
 
 object test extends App{
   val mc = new MusqleContext()
-  val q = AllQueries.tpcds1_4Queries(2)._2
-  val q1 = mc.query(q).count
+  val q = AllQueries.tpcds1_4Queries(6)._2
 
-  println(q1)
-
+  val postgres = Engine.POSTGRES(mc.sparkSession)
+  postgres.writeDF(mc.sparkSession.table("store_sales"), "store_sales")
 }

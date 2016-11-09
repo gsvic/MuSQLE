@@ -6,14 +6,18 @@ import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
 import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEMove, MuSQLEScan}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.expressions.{Attribute, EqualTo, Expression}
+import org.apache.spark.sql.catalyst.analysis.Analyzer
+import org.apache.spark.sql.catalyst.expressions.{Attribute, EqualTo, Expression, SortOrder}
 import org.apache.spark.sql.catalyst.plans.Inner
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.spark.sql.internal.SQLConf
 
 /**
   * Transformation of [[DPJoinPlan]] into [[LogicalPlan]]
   * */
 class SparkPlanGenerator(sparkSession: SparkSession) {
+
 
   /** Generates a Catalyst LogicalPlan from a DPJoinPlan */
   def toSparkLogicalPlan(plan: DPJoinPlan): LogicalPlan = {
@@ -31,8 +35,19 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
     logicalPlan match{
       case unaryNode: UnaryNode => {
         unaryNode match {
-          case Project(projectList, child) => { new Project(projectList, toSparkLogicalPlan(plan, child)) }
-          case Sort(order, global, child) => { new Sort(order, global, toSparkLogicalPlan(plan, child)) }
+          case Project(projectList, child) => {
+            val sparkLogical = toSparkLogicalPlan(plan, child)
+            val newProjectList = projectList.map{projection =>
+              val name = projection.name
+              val out = sparkLogical.output
+              val r = out.find(name == _.name)
+              r.get
+            }
+            new Project(newProjectList, sparkLogical)
+          }
+          case Sort(order, global, child) => {
+            new Sort(order, global, toSparkLogicalPlan(plan, child))
+          }
           case GlobalLimit(limit, child) => { new GlobalLimit(limit, toSparkLogicalPlan(plan, child)) }
           case LocalLimit(limit, child) => { new LocalLimit(limit, toSparkLogicalPlan(plan, child)) }
           case Aggregate(groupingExpressions, aggregateExpressions, child) => {
@@ -53,15 +68,17 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
         val right = dpJoinPlanToLogicalPlan(plan.right)
         val expression = plan.info.asInstanceOf[MQueryInfo].idToCondition.get(musqleJoin.vars.toList(0))
 
-        println(makeNewExpression(left, right, expression.get))
-        new Join(left, right, Inner, expression)
+        val exp = makeNewExpression(left, right, expression.get)
+        new Join(left, right, Inner, Option(exp))
       }
       case musqleScan: MuSQLEScan => {
         musqleScan.vertex.plan
       }
       case move: MuSQLEMove => {
-        println(s"MOVE: ${move.dpJoinPlan.toSQL} Engine: ${move.dpJoinPlan.engine}")
-        move.dpJoinPlan.engine.getDF(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan
+        val m = move.dpJoinPlan.engine.getDF(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan.asInstanceOf[LogicalRelation]
+        val outputAttributes = sparkSession.sql(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan.output
+        val lr = new LogicalRelation(m.relation, Option(outputAttributes))
+        lr
       }
     }
   }
@@ -73,16 +90,16 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
         var rightAttribute = null.asInstanceOf[Attribute]
 
         left.output.foreach { k =>
-          if (k.name.equals(leftKey.prettyName))
+          if (k.name.equals(leftKey.asInstanceOf[Attribute].name))
             leftAttribute = k
         }
 
         right.output.foreach { k =>
-          if (k.name.equals(rightKey.prettyName))
+          if (k.name.equals(rightKey.asInstanceOf[Attribute].name))
             rightAttribute = k
         }
 
-        EqualTo(leftAttribute, rightAttribute.asInstanceOf[Attribute])
+        EqualTo(leftAttribute, rightAttribute)
       }
       case _ => throw new OperationNotSupportedException("MuSQLE currently supports only inner joins!")
     }
