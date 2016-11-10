@@ -2,7 +2,7 @@ package gr.cslab.ece.ntua.musqle.spark
 
 import java.util
 
-import gr.cslab.ece.ntua.musqle.engine.Engine
+import gr.cslab.ece.ntua.musqle.engine.{Engine, Spark}
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.SparkSession
@@ -31,6 +31,14 @@ class DPhypSpark(sparkSession: SparkSession) extends
       qInfo.idToVertex.values().foreach{ vertex =>
         addVertex(vertex, vertex.connections.toList)
       }
+    }
+  }
+
+  override def plan(): DPJoinPlan = {
+    val p = super.plan()
+    p.engine match {
+      case spark: Spark => p
+      case _ => MuSQLEMove(p, Spark(sparkSession), qInfo)
     }
   }
 

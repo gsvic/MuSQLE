@@ -2,7 +2,7 @@ package gr.cslab.ece.ntua.musqle.sql
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEMove, MuSQLEScan}
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
+import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
 import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
@@ -251,7 +251,10 @@ class SQLCodeGen(val info: MQueryInfo) {
         val key = attribute.name
         s"t$id.$key IS NOT NULL"
       }
-      case _ => throw new UnsupportedOperationException()
+      case in: In => {
+        in.sql
+      }
+      case _ => throw new UnsupportedOperationException(s"Operator: ${expr}")
     }
   }
 

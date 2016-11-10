@@ -6,7 +6,7 @@ import scala.collection.mutable
 abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engine: Engine,
                           var cost: Double, val info: QueryInfo) {
   final val resultNumber: Int = DPJoinPlan.getResultNumber
-  final val tmpName: String = s"res$resultNumber"
+  final val tmpName: String = s"t$resultNumber"
   final val isJoin: Boolean = (left != null && right !=null)
 
   val toSQL: String = "Some SQL Text..."

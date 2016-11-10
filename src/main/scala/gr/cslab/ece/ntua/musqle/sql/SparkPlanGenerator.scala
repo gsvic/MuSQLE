@@ -37,13 +37,16 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
         unaryNode match {
           case Project(projectList, child) => {
             val sparkLogical = toSparkLogicalPlan(plan, child)
-            val newProjectList = projectList.map{projection =>
+            /*val newProjectList = projectList.map{projection =>
               val name = projection.name
               val out = sparkLogical.output
               val r = out.find(name == _.name)
               r.get
-            }
-            new Project(newProjectList, sparkLogical)
+            }*/
+            new Project(projectList, sparkLogical)
+          }
+          case Window(windowExpressions, partitionSpec, orderSpec, child) => {
+            new Window(windowExpressions, partitionSpec, orderSpec, toSparkLogicalPlan(plan, child))
           }
           case Sort(order, global, child) => {
             new Sort(order, global, toSparkLogicalPlan(plan, child))

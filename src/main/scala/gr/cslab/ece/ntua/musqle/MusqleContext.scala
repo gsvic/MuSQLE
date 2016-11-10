@@ -51,19 +51,26 @@ class MusqleContext {
     //val qe = new QueryExecution(sparkSession, sparkLogical)
     val dataFrame = new Dataset[Row](sparkSession, sparkLogical, RowEncoder(sparkLogical.schema))
 
+    p.explain()
+    println(sparkLogical)
+    println(p.toSQL)
+
+    /*
+    var sp = 0.0
+    var musqle = 0.0
+
     val a = {
       val start = System.currentTimeMillis()
-      df.count()
+      musqle = df.count()
       System.currentTimeMillis() - start
     }
     val b = {
       val start = System.currentTimeMillis()
-      dataFrame.count()
+      sp = dataFrame.count()
       System.currentTimeMillis() - start
     }
-
-    println(s"Spark: ${a / 1000.0}\nMuSQLE: ${b / 1000.0}")
-
+    println(s"Spark: [$sp][${a / 1000.0}]\nMuSQLE: [$musqle][${b / 1000.0}]")
+    */
 
     dataFrame
   }
@@ -72,8 +79,7 @@ class MusqleContext {
 
 object test extends App{
   val mc = new MusqleContext()
-  val q = AllQueries.tpcds1_4Queries(6)._2
+  val q = AllQueries.tpcds1_4Queries(11)._2
 
-  val postgres = Engine.POSTGRES(mc.sparkSession)
-  postgres.writeDF(mc.sparkSession.table("store_sales"), "store_sales")
+  mc.query(q)
 }
