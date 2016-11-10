@@ -199,29 +199,35 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
           dptable.checkAndPut(leftSubPlan.getKey, s, r)
         } else {
           /* A move is required */
-          /* Move left to right */
-          var m: DPJoinPlan = move.newInstance(leftSubPlan.getValue, rightSubPlan.getKey, queryInfo).asInstanceOf[Move]
-          var r: DPJoinPlan = join.newInstance(m, rightSubPlan.getValue, vars,
-            rightSubPlan.getKey, queryInfo).asInstanceOf[Join]
-          dptable.checkAndPut(rightSubPlan.getKey, s, r)
-          /* Move right to left */
-          m = move.newInstance(rightSubPlan.getValue, leftSubPlan.getKey, queryInfo).asInstanceOf[Move]
-          r = join.newInstance(leftSubPlan.getValue, m, vars, leftSubPlan.getKey, queryInfo).asInstanceOf[Join]
-          dptable.checkAndPut(leftSubPlan.getKey, s, r)
+
+          /* Move left to right - Checking if the left right engine support moving from right engine */
+          if (rightSubPlan.getKey.supportsMove(leftSubPlan.getKey)) {
+            val m: DPJoinPlan = move.newInstance(leftSubPlan.getValue, rightSubPlan.getKey, queryInfo).asInstanceOf[Move]
+            val r: DPJoinPlan = join.newInstance(m, rightSubPlan.getValue, vars,
+              rightSubPlan.getKey, queryInfo).asInstanceOf[Join]
+            dptable.checkAndPut(rightSubPlan.getKey, s, r)
+          }
+
+          /* Move right to left - Checking if the left right engine support moving from right engine */
+          if (leftSubPlan.getKey.supportsMove(rightSubPlan.getKey)) {
+            val m = move.newInstance(rightSubPlan.getValue, leftSubPlan.getKey, queryInfo).asInstanceOf[Move]
+            val r = join.newInstance(leftSubPlan.getValue, m, vars, leftSubPlan.getKey, queryInfo).asInstanceOf[Join]
+            dptable.checkAndPut(leftSubPlan.getKey, s, r)
+          }
 
           /* Move all to other engine */
           for (engine <- dptable.engines) {
             var m1: DPJoinPlan = leftSubPlan.getValue
             var m2: DPJoinPlan = rightSubPlan.getValue
-            if (!leftSubPlan.getKey.equals(engine)) {
+            if (!leftSubPlan.getKey.equals(engine) && engine.supportsMove(leftSubPlan.getKey)) {
               m1 = move.newInstance(m1, engine, queryInfo).asInstanceOf[Move]
             }
 
-            if (!rightSubPlan.getKey.equals(engine)) {
+            if (!rightSubPlan.getKey.equals(engine) && engine.supportsMove(rightSubPlan.getKey)) {
               m2 = move.newInstance(m2, engine, queryInfo).asInstanceOf[Move]
             }
 
-            r = join.newInstance(m1, m2, vars, engine, queryInfo).asInstanceOf[Join]
+            val r = join.newInstance(m1, m2, vars, engine, queryInfo).asInstanceOf[Join]
             dptable.checkAndPut(engine, s, r)
           }
         }

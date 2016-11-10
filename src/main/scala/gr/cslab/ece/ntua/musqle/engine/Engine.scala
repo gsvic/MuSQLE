@@ -7,6 +7,8 @@ abstract class Engine(){
   override def equals(obj: scala.Any): Boolean = {
     this.getClass.equals(obj.getClass)
   }
+
+  def supportsMove(engine: Engine): Boolean
   def getMoveCost(plan: DPJoinPlan): Double
   def getQueryCost(sql: String): Double
   def getDF(sql: String): DataFrame
