@@ -16,6 +16,7 @@ final class MQueryInfo extends QueryInfo{
   val tableNameToEngine : mutable.HashMap[String, Engine]  = new mutable.HashMap[String, Engine]()
   val tableMap: mutable.HashMap[Int, SparkPlanVertex] = new mutable.HashMap[Int, SparkPlanVertex]
   val attributeToVertex = new mutable.HashMap[String, SparkPlanVertex]
+  val attributeToRelName = new mutable.HashMap[String, String]
   val idToCondition = new mutable.HashMap[Int, Expression]
   val idToVertex = new TreeMap[Int, SparkPlanVertex]()
   var lastCondition: Int = 1

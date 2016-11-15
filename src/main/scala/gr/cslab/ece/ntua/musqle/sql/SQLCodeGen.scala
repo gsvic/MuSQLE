@@ -1,7 +1,8 @@
 package gr.cslab.ece.ntua.musqle.sql
 
+import gr.cslab.ece.ntua.musqle.cost.Scan
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
-import gr.cslab.ece.ntua.musqle.plan.spark.{MQueryInfo, MuSQLEJoin, MuSQLEMove, MuSQLEScan}
+import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
 import org.apache.spark.sql.catalyst.plans.logical.Filter
 import org.apache.spark.sql.execution.datasources.LogicalRelation
@@ -21,13 +22,16 @@ class SQLCodeGen(val info: MQueryInfo) {
   }
 
   def genSQL(plan: MuSQLEJoin): String = {
-    val conditions = findTablesInSubQuery(plan).map(key => info.idToCondition(key))
-    val keys = findTablesInSubQuery(plan).flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
+    val subQueryTables = findJoinKeys(plan)
+    val conditions = subQueryTables.map(key => info.idToCondition(key))
+    val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
     val tables = keys.map{ attribute =>
       info.attributeToVertex.get(attribute.toString()).get
     }
+    val names = findTableNames(plan)
 
+    val commaSeperatedNames = names.reduceLeft(_ + ", " + _)
     var SQL =
       s"""SELECT *
          |FROM """.stripMargin
@@ -252,7 +256,11 @@ class SQLCodeGen(val info: MQueryInfo) {
         s"t$id.$key IS NOT NULL"
       }
       case in: In => {
-        in.sql
+        val attribute = in.value.asInstanceOf[AttributeReference]
+        val id = info.attributeToVertex.get(attribute.toString()).get.id
+        val list = s"(${in.list.map(_.sql).reduceLeft(_+ ", " + _)})"
+        val result = s"t$id.${attribute.name} IN $list"
+        result
       }
       case _ => throw new UnsupportedOperationException(s"Operator: ${expr}")
     }
@@ -263,17 +271,36 @@ class SQLCodeGen(val info: MQueryInfo) {
   /**
     * @return A [[mutable.HashSet]] with the tables contained in the input subquery
     * */
-  private def findTablesInSubQuery(plan: DPJoinPlan): mutable.HashSet[Integer] ={
+  private def findJoinKeys(plan: DPJoinPlan): mutable.HashSet[Integer] ={
     val hashSet = new mutable.HashSet[Integer]()
     plan match {
       case join: Join => {
         join.vars.foreach(x => hashSet.add(x))
-        findTablesInSubQuery(plan.left).foreach(hashSet.add)
-        findTablesInSubQuery(plan.right).foreach(hashSet.add)
+        findJoinKeys(plan.left).foreach(hashSet.add)
+        findJoinKeys(plan.right).foreach(hashSet.add)
       }
       case _ => {}
     }
     hashSet
+  }
+
+  private def findTableNames(plan: DPJoinPlan): mutable.HashSet[String] = {
+    val names = new mutable.HashSet[String]()
+
+    plan match {
+      case join: MuSQLEJoin => {
+        findTableNames(join.left).foreach(names.add)
+        findTableNames(join.right).foreach(names.add)
+      }
+      case move: MuSQLEMove => {
+        names.add(move.tmpName)
+      }
+      case scan: MuSQLEScan => {
+        val n = matchTableName(scan.table.asInstanceOf[SparkPlanVertex].plan)
+        names.add(scan.tmpName)
+      }
+    }
+    names
   }
 
   private def findFiltersInSubQuery(plan: DPJoinPlan): mutable.HashSet[Filter] ={

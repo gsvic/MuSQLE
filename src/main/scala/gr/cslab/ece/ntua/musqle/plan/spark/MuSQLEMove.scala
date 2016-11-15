@@ -8,6 +8,11 @@ import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Move}
   */
 case class MuSQLEMove(val plan: DPJoinPlan, val destEngine: Engine, override val info: MQueryInfo)
   extends Move(plan, destEngine, info){
+  override val toSQL: String = plan.toSQL
 
-  println(s"Moving from ${plan.engine} to ${destEngine}")
+  val df = plan.engine.getDF(plan.toSQL)
+  df.queryExecution.optimizedPlan.allAttributes.attrs.foreach{
+    attr =>
+      info.attributeToRelName.put(attr.toString(), tmpName)
+  }
 }

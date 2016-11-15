@@ -15,6 +15,4 @@ class MuSQLEJoin(override val left: DPJoinPlan, override val right: DPJoinPlan,
     val codeGenerator = new SQLCodeGen(info)
     codeGenerator.genSQL(this)
   }
-
-
 }

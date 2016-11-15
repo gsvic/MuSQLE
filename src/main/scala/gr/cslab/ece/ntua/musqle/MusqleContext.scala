@@ -7,13 +7,17 @@ import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.sql.SparkPlanGenerator
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.execution.QueryExecution
 import org.apache.spark.sql.execution.datasources.LogicalRelation
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
 
 class MusqleContext {
+  Logger.getLogger("org").setLevel(Level.OFF)
+  Logger.getLogger("akka").setLevel(Level.OFF)
+
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://master:7077").appName("MuSQLE")
+    .master("spark://localhost:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -53,7 +57,6 @@ class MusqleContext {
 
     p.explain()
     println(sparkLogical)
-    println(p.toSQL)
 
     /*
     var sp = 0.0
@@ -80,6 +83,10 @@ class MusqleContext {
 object test extends App{
   val mc = new MusqleContext()
   val q = AllQueries.tpcds1_4Queries(11)._2
+  val t = """select * from date_dim d1, date_dim d2, date_dim d3, date_dim d4
+            |where d1.d_date_sk = d2.d_date_sk
+            |and d2.d_date_sk = d3.d_date_sk
+            |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
   mc.query(q)
 }

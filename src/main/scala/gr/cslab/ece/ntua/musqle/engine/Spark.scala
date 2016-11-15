@@ -9,13 +9,18 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   */
 
 case class Spark(val sparkSession: SparkSession) extends Engine {
-    val costEstimator = new SparkSQLCost()
-
+  val costEstimator = new SparkSQLCost()
   override def supportsMove(engine: Engine): Boolean = {
     true
   }
+
+  override def move(dPJoinPlan: DPJoinPlan): Unit = {
+    //dPJoinPlan.engine.getDF(dPJoinPlan.toSQL)
+  }
   override def getMoveCost(plan: DPJoinPlan): Double = 0.0
   override def getQueryCost(sql: String): Double  = {
+    logger.debug(s"Getting query cost: ${sql}")
+
     if (sparkSession == null) {
       throw new Exception("null spark session")
     }
@@ -29,6 +34,6 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
       println("Asking Spark for move")
       0.0
     }*/
-  override def toString: String = {"Spark SQL"}
+  override def toString: String = {"SparkSQL"}
 }
 

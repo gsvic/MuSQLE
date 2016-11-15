@@ -18,6 +18,7 @@ import scala.concurrent.{Await, Future}
 case class Postgres(sparkSession: SparkSession) extends Engine {
   val jdbcURL = s"jdbc:postgresql://147.102.4.129:5432/tpcds1?user=musqle&password=musqle"
   val props = new Properties()
+  logger.info("Initializing postgres")
   props.setProperty("driver", "org.postgresql.Driver")
 
   val connection = {
@@ -28,10 +29,11 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     con
   }
 
-  override def supportsMove(engine: Engine): Boolean = false
+  override def supportsMove(engine: Engine): Boolean = true
+  override def move(dPJoinPlan: DPJoinPlan): Unit = {}
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
   override def getQueryCost(sql: String): Double = {
-    println(s"Asking: ${sql} = [postgres]")
+    logger.debug(s"Getting query cost: ${sql}")
 
     val start = System.currentTimeMillis()
     val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${sql.replaceAll("`", "")}")
@@ -53,8 +55,6 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
       val min = p(0).split("=")(1)
       val max = p(1).toDouble
 
-      println(s"[${min}, ${max}]")
-
       max
     }
 
@@ -75,4 +75,6 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     println(df)
     df
   }
+
+  override def toString: String = "PostgreSQL"
 }
