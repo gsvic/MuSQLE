@@ -17,7 +17,7 @@ class MusqleContext {
 
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://localhost:7077").appName("MuSQLE")
+    .master("spark://master:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -48,6 +48,8 @@ class MusqleContext {
     val optPlan = df.queryExecution.optimizedPlan
     planner.setLogicalPlan(optPlan)
 
+    println(optPlan)
+
     val p = planner.plan()
     val planGenerator = new SparkPlanGenerator(sparkSession)
     val sparkLogical = planGenerator.toSparkLogicalPlan(p)
@@ -55,6 +57,7 @@ class MusqleContext {
     //val qe = new QueryExecution(sparkSession, sparkLogical)
     val dataFrame = new Dataset[Row](sparkSession, sparkLogical, RowEncoder(sparkLogical.schema))
 
+    val tables = sparkSession.catalog.listTables().collect()
     p.explain()
     println(sparkLogical)
 
@@ -83,7 +86,7 @@ class MusqleContext {
 object test extends App{
   val mc = new MusqleContext()
   val q = AllQueries.tpcds1_4Queries(11)._2
-  val t = """select * from date_dim d1, date_dim d2, date_dim d3, date_dim d4
+  val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
             |where d1.d_date_sk = d2.d_date_sk
             |and d2.d_date_sk = d3.d_date_sk
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin

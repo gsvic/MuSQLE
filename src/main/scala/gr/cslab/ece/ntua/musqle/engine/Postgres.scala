@@ -29,7 +29,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     con
   }
 
-  override def supportsMove(engine: Engine): Boolean = true
+  override def supportsMove(engine: Engine): Boolean = false
   override def move(dPJoinPlan: DPJoinPlan): Unit = {}
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
   override def getQueryCost(sql: String): Double = {

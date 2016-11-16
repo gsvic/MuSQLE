@@ -12,7 +12,7 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
     codeGen.genSQL(this)
   }
 
-  this.vertex.plan.attributeMap.foreach(attr => info.attributeToRelName.put(attr.toString(), this.tmpName))
+  //this.vertex.plan.attributeMap.foreach(attr => info.attributeToRelName.put(attr.toString(), this.tmpName))
   this.engine.getDF(this.toSQL).createOrReplaceTempView(this.tmpName)
 
   override def toString: String = {

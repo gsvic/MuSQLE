@@ -4,7 +4,7 @@ import gr.cslab.ece.ntua.musqle.cost.Scan
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
-import org.apache.spark.sql.catalyst.plans.logical.Filter
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
 
@@ -16,9 +16,14 @@ class SQLCodeGen(val info: MQueryInfo) {
     val tableName = matchTableName(scan.vertex.plan)
     val filter = makeCondition(scan.vertex.filter.condition)
 
-    s"""SELECT *
+    val projection = scan.vertex.plan.output.map(attr => s"${attr.name} AS ${attr.toString.replace("#", "")}")
+      .reduceLeft(_ +", "+ _)
+
+    val sql = s"""SELECT *
        |FROM $tableName t${scan.vertex.id}
        |WHERE $filter""".stripMargin
+
+    sql
   }
 
   def genSQL(plan: MuSQLEJoin): String = {
@@ -27,26 +32,21 @@ class SQLCodeGen(val info: MQueryInfo) {
     val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
     val tables = keys.map{ attribute =>
-      info.attributeToVertex.get(attribute.toString()).get
+      matchTableName(info.attributeToVertex.get(attribute.toString()).get.plan)
     }
     val names = findTableNames(plan)
+
+    //val projections = getProjections(plan)
 
     val commaSeperatedNames = names.reduceLeft(_ + ", " + _)
     var SQL =
       s"""SELECT *
          |FROM """.stripMargin
 
-    SQL += {
-      val vertex = tables.toList(0)
-      val name = matchTableName(vertex.plan)
-      val id = vertex.id
+    SQL += names.toList(0)
 
-      s"$name t$id"
-    }
-
-    tables.toList.slice(1, tables.size).foreach{table =>
-      val name = matchTableName(table.plan)
-      SQL += s""", $name t${table.id}"""
+    names.toList.slice(1, tables.size).foreach{table =>
+      SQL += s""", $table"""
     }
 
     var WHERE = ""
@@ -67,6 +67,22 @@ class SQLCodeGen(val info: MQueryInfo) {
 
     SQL += WHERE
     SQL
+  }
+
+  private def getSparkPlanProjections(plan: LogicalPlan): mutable.HashSet[String] = {
+    val projections = new mutable.HashSet[String]()
+
+    if (plan.children.size == 1){
+      plan.output.foreach(att => projections.add(att.toString()))
+      getSparkPlanProjections(plan.children(0)).foreach(projections.add)
+    }
+    projections
+  }
+
+  private def getProjections(plan: DPJoinPlan): mutable.HashSet[String] = {
+    val sparkPlanProjections = getSparkPlanProjections(plan.info.asInstanceOf[MQueryInfo].rootLogicalPlan)
+
+    sparkPlanProjections
   }
 
   private def makeCondition(expr: Expression): String ={
