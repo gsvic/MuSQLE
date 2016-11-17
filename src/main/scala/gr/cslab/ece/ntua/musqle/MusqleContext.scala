@@ -5,6 +5,7 @@ import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
 import gr.cslab.ece.ntua.musqle.engine.Engine
+import gr.cslab.ece.ntua.musqle.plan.spark.Execution
 import gr.cslab.ece.ntua.musqle.sql.SparkPlanGenerator
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.execution.datasources.LogicalRelation
@@ -15,9 +16,12 @@ class MusqleContext {
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
+  val mcLogger = Logger.getLogger(classOf[MusqleContext])
+  mcLogger.setLevel(Level.DEBUG)
+
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://master:7077").appName("MuSQLE")
+    .master("spark://localhost:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -48,18 +52,16 @@ class MusqleContext {
     val optPlan = df.queryExecution.optimizedPlan
     planner.setLogicalPlan(optPlan)
 
-    println(optPlan)
-
+    val start = System.currentTimeMillis()
     val p = planner.plan()
-    val planGenerator = new SparkPlanGenerator(sparkSession)
-    val sparkLogical = planGenerator.toSparkLogicalPlan(p)
+    val planningTime = System.currentTimeMillis() / 1000.0
 
-    //val qe = new QueryExecution(sparkSession, sparkLogical)
-    val dataFrame = new Dataset[Row](sparkSession, sparkLogical, RowEncoder(sparkLogical.schema))
+    mcLogger.info(s"Planning took ${planningTime}s.")
 
-    val tables = sparkSession.catalog.listTables().collect()
     p.explain()
-    println(sparkLogical)
+
+    val executor = new Execution(sparkSession)
+    executor.execute(p)
 
     /*
     var sp = 0.0
@@ -77,8 +79,7 @@ class MusqleContext {
     }
     println(s"Spark: [$sp][${a / 1000.0}]\nMuSQLE: [$musqle][${b / 1000.0}]")
     */
-
-    dataFrame
+    null
   }
 
 }

@@ -1,6 +1,5 @@
 package gr.cslab.ece.ntua.musqle.sql
 
-import gr.cslab.ece.ntua.musqle.cost.Scan
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
@@ -13,14 +12,14 @@ import scala.collection.mutable
 class SQLCodeGen(val info: MQueryInfo) {
 
   def genSQL(scan: MuSQLEScan): String = {
-    val tableName = matchTableName(scan.vertex.plan)
+    val tableName = matchTableName(scan.vertex.plan, this.info)
     val filter = makeCondition(scan.vertex.filter.condition)
 
-    val projection = scan.vertex.plan.output.map(attr => s"${attr.name} AS ${attr.toString.replace("#", "")}")
+    val projection = scan.vertex.plan.output.map(attr => s"${attr.name} ${attr.toString.replace("#", "")}")
       .reduceLeft(_ +", "+ _)
 
     val sql = s"""SELECT *
-       |FROM $tableName t${scan.vertex.id}
+       |FROM ${scan.tmpName}
        |WHERE $filter""".stripMargin
 
     sql
@@ -32,7 +31,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
     val tables = keys.map{ attribute =>
-      matchTableName(info.attributeToVertex.get(attribute.toString()).get.plan)
+      matchTableName(info.attributeToVertex.get(attribute.toString()).get.plan, this.info)
     }
     val names = findTableNames(plan)
 
@@ -92,8 +91,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           eq.left match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(eq.left.toString()).get.id
-              val key = eq.left.toString().split("#")(0)
-              s"t$id.$key"
+              val key = eq.left.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -109,8 +108,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           eq.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(eq.right.toString()).get.id
-              val key = eq.right.toString().split("#")(0)
-              s"t$id.$key"
+              val key = eq.right.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -128,8 +127,8 @@ class SQLCodeGen(val info: MQueryInfo) {
         lt.left match{
           case ar: AttributeReference =>{
             val id = info.attributeToVertex.get(lt.left.toString()).get.id
-            val key = lt.left.toString().split("#")(0)
-            s"t$id.$key"
+            val key = lt.left.toString.replace("#","")
+            key
           }
           case literal: Literal => {
             literal.dataType match {
@@ -144,8 +143,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           lt.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(lt.right.toString()).get.id
-              val key = lt.right.toString().split("#")(0)
-              s"t$id.$key"
+              val key = lt.right.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -163,8 +162,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           gt.left match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(gt.left.toString()).get.id
-              val key = gt.left.toString().split("#")(0)
-              s"t$id.$key"
+              val key = gt.left.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -179,8 +178,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           gt.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(gt.right.toString()).get.id
-              val key = gt.right.toString().split("#")(0)
-              s"t$id.$key"
+              val key = gt.right.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -198,8 +197,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           ltoet.left match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(ltoet.left.toString()).get.id
-              val key = ltoet.left.toString().split("#")(0)
-              s"t$id.$key"
+              val key = ltoet.left.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -214,8 +213,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           ltoet.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(ltoet.right.toString()).get.id
-              val key = ltoet.right.toString().split("#")(0)
-              s"t$id.$key"
+              val key = ltoet.right.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -233,8 +232,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           gtoet.left match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(gtoet.left.toString()).get.id
-              val key = gtoet.left.toString().split("#")(0)
-              s"t$id.$key"
+              val key = gtoet.left.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -249,8 +248,8 @@ class SQLCodeGen(val info: MQueryInfo) {
           gtoet.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(gtoet.right.toString()).get.id
-              val key = gtoet.right.toString().split("#")(0)
-              s"t$id.$key"
+              val key = gtoet.right.toString.replace("#","")
+              key
             }
             case literal: Literal => {
               literal.dataType match {
@@ -268,14 +267,15 @@ class SQLCodeGen(val info: MQueryInfo) {
       case notNull: IsNotNull => {
         val attribute = notNull.child.asInstanceOf[AttributeReference]
         val id = info.attributeToVertex.get(attribute.toString()).get.id
-        val key = attribute.name
-        s"t$id.$key IS NOT NULL"
+        val key = attribute.toString.replace("#", "")
+        s"$key IS NOT NULL"
       }
       case in: In => {
         val attribute = in.value.asInstanceOf[AttributeReference]
         val id = info.attributeToVertex.get(attribute.toString()).get.id
         val list = s"(${in.list.map(_.sql).reduceLeft(_+ ", " + _)})"
-        val result = s"t$id.${attribute.name} IN $list"
+        val key = attribute.toString.replace("#", "")
+        val result = s"$key IN $list"
         result
       }
       case _ => throw new UnsupportedOperationException(s"Operator: ${expr}")
@@ -312,7 +312,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         names.add(move.tmpName)
       }
       case scan: MuSQLEScan => {
-        val n = matchTableName(scan.table.asInstanceOf[SparkPlanVertex].plan)
+        val n = matchTableName(scan.table.asInstanceOf[SparkPlanVertex].plan, this.info)
         names.add(scan.tmpName)
       }
     }
@@ -339,7 +339,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     hashSet
   }
 
-  private def matchTableName(logicalRelation: LogicalRelation): String = {
+  def matchTableName(logicalRelation: LogicalRelation, info: MQueryInfo): String = {
     val candidateTableAttributes = logicalRelation.attributeMap.map(_._2.name)
     info.planToTableName.foreach{ plan =>
       var flag = true

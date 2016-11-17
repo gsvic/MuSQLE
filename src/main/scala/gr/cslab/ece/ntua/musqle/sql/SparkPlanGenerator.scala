@@ -21,9 +21,10 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
 
   /** Generates a Catalyst LogicalPlan from a DPJoinPlan */
   def toSparkLogicalPlan(plan: DPJoinPlan): LogicalPlan = {
-    val info = plan.info.asInstanceOf[MQueryInfo]
-    val child = toSparkLogicalPlan(plan, info.rootLogicalPlan)
-    child
+    //val info = plan.info.asInstanceOf[MQueryInfo]
+    //val child = toSparkLogicalPlan(plan, info.rootLogicalPlan)
+    //child
+    dpJoinPlanToLogicalPlan(plan)
   }
 
   /**
@@ -37,12 +38,6 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
         unaryNode match {
           case Project(projectList, child) => {
             val sparkLogical = toSparkLogicalPlan(plan, child)
-            /*val newProjectList = projectList.map{projection =>
-              val name = projection.name
-              val out = sparkLogical.output
-              val r = out.find(name == _.name)
-              r.get
-            }*/
             new Project(projectList, sparkLogical)
           }
           case Window(windowExpressions, partitionSpec, orderSpec, child) => {
@@ -79,9 +74,9 @@ class SparkPlanGenerator(sparkSession: SparkSession) {
       }
       case move: MuSQLEMove => {
         val m = move.dpJoinPlan.engine.getDF(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan.asInstanceOf[LogicalRelation]
-        val outputAttributes = sparkSession.sql(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan.output
-        val lr = new LogicalRelation(m.relation, Option(outputAttributes))
-        lr
+        //val outputAttributes = sparkSession.sql(move.dpJoinPlan.toSQL).queryExecution.optimizedPlan.output
+        //val lr = new LogicalRelation(m.relation, Option(outputAttributes))
+        m
       }
     }
   }

@@ -38,9 +38,9 @@ object SparkSQLCostModel{
           case hdfs: HadoopFsRelation => {
             val partitions = hdfs.location.allFiles().size
             val sizeInBytes = logicalRelation.statistics.sizeInBytes
-
             CostModelMetrics(partitions, sizeInBytes)
           }
+          case _ => CostModelMetrics(1, 1)
           case _ => {
             throw new Exception(s"matching error: ${logicalRelation.relation}")
           }

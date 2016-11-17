@@ -30,8 +30,8 @@ object DPJoinPlan{
   * */
 class Scan(val table: Vertex, override val engine: Engine, override val info: QueryInfo)
   extends DPJoinPlan(null, null, engine, 0, info){
-  override def print(indent: String): String = s"$indent*$this (tID: ${table.id}) [${this.resultNumber}] " +
-    s"Cost: [${getCost}], Engine: [$engine]"
+  override def print(indent: String): String = s"$indent*Scan $this" +
+    s" Engine: [$engine], Cost: [${getCost}], [${this.tmpName}] "
   override def getCost: Double = engine.getQueryCost(this.toSQL)
 }
 
@@ -47,8 +47,8 @@ class Join(override val left: DPJoinPlan, override val right: DPJoinPlan, val va
   extends DPJoinPlan(null, null, engine, left.getCost + right.getCost, info){
 
   override def print(indent: String): String = s"${indent}" +
-    s"Join(${this.getClass.getSimpleName})<${left.resultNumber}, ${right.resultNumber}> " +
-    s"on ${vars} Cost: [$getCost], Engine: [$engine], ID: [$resultNumber]" +
+    s"Join <${left.tmpName}, ${right.tmpName}> " +
+    s"on ${vars} , Engine: [$engine], Cost: [$getCost], [$tmpName]" +
     s"\n${left.print(indent + "\t")}" +
     s"\n${right.print(indent + "\t")}"
 
@@ -63,8 +63,8 @@ class Join(override val left: DPJoinPlan, override val right: DPJoinPlan, val va
 class Move(val dpJoinPlan: DPJoinPlan, override val engine: Engine, override val info: QueryInfo)
   extends DPJoinPlan(dpJoinPlan, null, engine, dpJoinPlan.getCost, info){
 
-  def print(indent: String): String = s"${indent}Move(${this.getClass.getSimpleName})[$resultNumber] from ${dpJoinPlan.engine} " +
-    s"to $engine cost $cost\n${dpJoinPlan.print(indent + "\t")}"
+  def print(indent: String): String = s"${indent}Move [${dpJoinPlan.tmpName}] from ${dpJoinPlan.engine} " +
+    s"to $engine, Cost $cost [$tmpName]\n${dpJoinPlan.print(indent + "\t")}"
   def compareTo(o: DPJoinPlan): Int = cost.compareTo(o.getCost)
   def getCost: Double = dpJoinPlan.getCost + engine.getMoveCost(dpJoinPlan)
 }

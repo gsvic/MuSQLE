@@ -10,9 +10,5 @@ case class MuSQLEMove(val plan: DPJoinPlan, val destEngine: Engine, override val
   extends Move(plan, destEngine, info){
   override val toSQL: String = plan.toSQL
 
-  /*val df = plan.engine.getDF(plan.toSQL)
-  df.queryExecution.optimizedPlan.allAttributes.attrs.foreach{
-    attr =>
-      info.attributeToRelName.put(attr.toString(), tmpName)
-  }*/
+  destEngine.inject(this)
 }

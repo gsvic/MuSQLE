@@ -3,10 +3,11 @@ package gr.cslab.ece.ntua.musqle.engine
 import java.util.Properties
 
 import com.github.mauricio.async.db.{QueryResult, RowData}
-import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
+import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Scan}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.github.mauricio.async.db.postgresql.PostgreSQLConnection
 import com.github.mauricio.async.db.postgresql.util.URLParser
+import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEScan
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -29,13 +30,26 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     con
   }
 
+  override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
+    val viewQuery =
+      s"""
+         |CREATE OR REPLACE VIEW ${plan.tmpName}
+         |AS SELECT $projection
+         |FROM $srcTable
+         |""".stripMargin
+
+    Await.result(connection.sendQuery(viewQuery), 20 seconds)
+  }
+
+  override def inject(plan: DPJoinPlan): Unit = {
+
+  }
   override def supportsMove(engine: Engine): Boolean = false
   override def move(dPJoinPlan: DPJoinPlan): Unit = {}
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
   override def getQueryCost(sql: String): Double = {
     logger.debug(s"Getting query cost: ${sql}")
 
-    val start = System.currentTimeMillis()
     val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${sql.replaceAll("`", "")}")
     val mapResult: Future[Any] = future.map(queryResult => queryResult.rows match {
       case Some(resultSet) => {
@@ -70,9 +84,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
 
 
   def getDF(sql: String): DataFrame = {
-    println(s"Postgres: Executing: ${sql}")
     val df = sparkSession.read.jdbc(jdbcURL, s"""(${sql}) AS SubQuery""", props)
-    println(df)
     df
   }
 
