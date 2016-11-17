@@ -17,7 +17,7 @@ class DPhypSpark(sparkSession: SparkSession) extends
 
   override final val dptable = new DPTable(Seq())
   override var queryInfo: QueryInfo = new MQueryInfo()
-  val qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
+  var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
   override def generateGraph(): Unit = {
     qInfo.lastCondition = 1
@@ -34,13 +34,13 @@ class DPhypSpark(sparkSession: SparkSession) extends
     }
   }
 
-  override def plan(): DPJoinPlan = {
+  /*override def plan(): DPJoinPlan = {
     val p = super.plan()
     p.engine match {
       case spark: Spark => p
       case _ => MuSQLEMove(p, Spark(sparkSession), qInfo)
     }
-  }
+  }*/
 
   def generateGraph(logical: LogicalPlan): Unit ={
     logical.children.foreach{ node => if (!logical.isInstanceOf[Filter]) generateGraph(node) }

@@ -40,13 +40,13 @@ class SQLCodeGen(val info: MQueryInfo) {
     val commaSeperatedNames = names.reduceLeft(_ + ", " + _)
     var SQL =
       s"""SELECT *
-         |FROM """.stripMargin
+         |FROM $commaSeperatedNames""".stripMargin
 
-    SQL += names.toList(0)
+    /*SQL += names.toList(0)
 
     names.toList.slice(1, tables.size).foreach{table =>
       SQL += s""", $table"""
-    }
+    }*/
 
     var WHERE = ""
 

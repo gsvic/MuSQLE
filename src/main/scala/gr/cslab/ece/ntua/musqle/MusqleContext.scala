@@ -2,12 +2,10 @@ package gr.cslab.ece.ntua.musqle
 
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
-import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.plan.spark.Execution
-import gr.cslab.ece.ntua.musqle.sql.SparkPlanGenerator
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
@@ -52,16 +50,20 @@ class MusqleContext {
     val optPlan = df.queryExecution.optimizedPlan
     planner.setLogicalPlan(optPlan)
 
+    post.cleanResults()
+
     val start = System.currentTimeMillis()
     val p = planner.plan()
-    val planningTime = System.currentTimeMillis() / 1000.0
+    val planningTime = (System.currentTimeMillis() - start) / 1000
 
     mcLogger.info(s"Planning took ${planningTime}s.")
 
     p.explain()
 
+    post.cleanResults()
+
     val executor = new Execution(sparkSession)
-    executor.execute(p)
+    executor.execute(p).explain()
 
     /*
     var sp = 0.0

@@ -1,15 +1,17 @@
 package gr.cslab.ece.ntua.musqle.plan.spark
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
   * Created by vic on 17/11/2016.
   */
 class Execution(sparkSession: SparkSession) {
-  def execute(plan: DPJoinPlan): Unit = {
+  def execute(plan: DPJoinPlan): DataFrame = {
     executeMovements(plan)
     println(s"Executing: ${plan.toSQL}")
+
+    plan.engine.getDF(plan.toSQL)
   }
   def executeMovements(plan: DPJoinPlan): Unit = {
     if (plan.left != null) executeMovements(plan.left)
