@@ -6,11 +6,12 @@ import gr.cslab.ece.ntua.musqle.engine.{Engine, Spark}
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression}
+import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, EqualTo, Expression}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Join, LogicalPlan}
 import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
 
 import scala.collection.JavaConversions._
+import scala.collection.mutable
 
 class DPhypSpark(sparkSession: SparkSession) extends
   DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]){
@@ -26,8 +27,11 @@ class DPhypSpark(sparkSession: SparkSession) extends
       throw new LogicalPlanNotSetException
     }
     else {
-      generateGraph(qInfo.rootLogicalPlan)
-      println()
+      val attrSet = new mutable.HashSet[Attribute]()
+      qInfo.rootLogicalPlan.output.foreach(attrSet.add)
+
+      generateGraph(qInfo.rootLogicalPlan, attrSet)
+
       qInfo.idToVertex.values().foreach{ vertex =>
         addVertex(vertex, vertex.connections.toList)
       }
@@ -42,16 +46,22 @@ class DPhypSpark(sparkSession: SparkSession) extends
     }
   }*/
 
-  def generateGraph(logical: LogicalPlan): Unit ={
-    logical.children.foreach{ node => if (!logical.isInstanceOf[Filter]) generateGraph(node) }
+  def generateGraph(logical: LogicalPlan, projections: mutable.HashSet[Attribute]): Unit ={
+    logical.children.foreach{ node =>
+      if (!logical.isInstanceOf[Filter]) {
+        generateGraph(node, projections.union(logical.output.toSet))
+      }
+    }
+
+    val finalProjections = projections.intersect(logical.output.toSet)
 
     logical match {
       /* Setting up vertices */
       case logicalRelation: LogicalRelation => {
-        addScan(logicalRelation, null)
+        addScan(logicalRelation, null, finalProjections)
       }
       case filter: Filter => {
-        addScan(filter.child.asInstanceOf[LogicalRelation], filter)
+        addScan(filter.child.asInstanceOf[LogicalRelation], filter, finalProjections)
       }
       case join: Join => {
         addJoin(join)
@@ -64,8 +74,9 @@ class DPhypSpark(sparkSession: SparkSession) extends
   def setLogicalPlan(logicalPlan: LogicalPlan): Unit ={
     this.qInfo.rootLogicalPlan = logicalPlan
   }
-  private def addScan(logicalRelation: LogicalRelation, filter: Filter): Unit ={
-    val vertex = new SparkPlanVertex(logicalRelation, Seq(getEngine(logicalRelation)), filter)
+  private def addScan(logicalRelation: LogicalRelation, filter: Filter,
+                      projections: mutable.HashSet[Attribute]): Unit ={
+    val vertex = new SparkPlanVertex(logicalRelation, Seq(getEngine(logicalRelation)), filter, projections)
     qInfo.tableMap.put(logicalRelation.hashCode(), vertex)
     qInfo.idToVertex.put(vertex.id, vertex)
 

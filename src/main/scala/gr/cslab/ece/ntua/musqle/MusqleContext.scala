@@ -19,7 +19,7 @@ class MusqleContext {
 
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://localhost:7077").appName("MuSQLE")
+    .master("spark://vicbook:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -30,6 +30,7 @@ class MusqleContext {
   val post = Engine.POSTGRES(sparkSession)
 
   catalog.tableMap.values.foreach { tableEntry =>
+    mcLogger.info(s"Loading: ${tableEntry}")
   val tableDF = {
     tableEntry.engine match {
       case "spark" => {
@@ -51,19 +52,22 @@ class MusqleContext {
     planner.setLogicalPlan(optPlan)
 
     post.cleanResults()
+    post.cleanViews()
 
     val start = System.currentTimeMillis()
     val p = planner.plan()
-    val planningTime = (System.currentTimeMillis() - start) / 1000
+    val planningTime = (System.currentTimeMillis() - start) / 1000.0
 
     mcLogger.info(s"Planning took ${planningTime}s.")
 
     p.explain()
 
+    println(p.toSQL)
+
     post.cleanResults()
 
-    val executor = new Execution(sparkSession)
-    executor.execute(p).explain()
+    //val executor = new Execution(sparkSession)
+    //executor.execute(p).explain()
 
     /*
     var sp = 0.0
@@ -94,5 +98,5 @@ object test extends App{
             |and d2.d_date_sk = d3.d_date_sk
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
-  mc.query(q)
+  mc.query(t)
 }

@@ -15,10 +15,10 @@ class SQLCodeGen(val info: MQueryInfo) {
     val tableName = matchTableName(scan.vertex.plan, this.info)
     val filter = makeCondition(scan.vertex.filter.condition)
 
-    val projection = scan.vertex.plan.output.map(attr => s"${attr.name} ${attr.toString.replace("#", "")}")
+    val projection = scan.vertex.projections.map(attr => s"${attr.toString.replace("#", "")}")
       .reduceLeft(_ +", "+ _)
 
-    val sql = s"""SELECT *
+    val sql = s"""SELECT $projection
        |FROM ${scan.tmpName}
        |WHERE $filter""".stripMargin
 
@@ -30,17 +30,21 @@ class SQLCodeGen(val info: MQueryInfo) {
     val conditions = subQueryTables.map(key => info.idToCondition(key))
     val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
-    val tables = keys.map{ attribute =>
-      matchTableName(info.attributeToVertex.get(attribute.toString()).get.plan, this.info)
+    val vertices = keys.map{ attribute => info.attributeToVertex.get(attribute.toString()).get
     }
     val names = findTableNames(plan)
 
-    //val projections = getProjections(plan)
+    val projections = vertices
+      .map(_.projections)
+      .reduceLeft(_.union(_))
+      .map(att => att.toString.replaceAll("#", ""))
+      .reduceLeft(_ + ", " + _)
 
-    val commaSeperatedNames = names.reduceLeft(_ + ", " + _)
+    val commaSeparatedNames = names.reduceLeft(_ + ", " + _)
+
     var SQL =
-      s"""SELECT *
-         |FROM $commaSeperatedNames""".stripMargin
+      s"""SELECT $projections
+         |FROM $commaSeparatedNames""".stripMargin
 
     /*SQL += names.toList(0)
 

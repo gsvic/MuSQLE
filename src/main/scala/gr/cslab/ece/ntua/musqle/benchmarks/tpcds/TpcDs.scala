@@ -28,6 +28,8 @@ object TpcDs {
 
 object tpcds extends App{
   val spark = SparkSession.builder()
-    .master("spark://master:7077").appName("MuSQLE").getOrCreate()
-  TpcDs.genCatalogFiles(spark,"hdfs://master:9000/tpcds/1")
+    .master("spark://vicbook:7077").appName("MuSQLE").getOrCreate()
+
+
+  TpcDs.dataGen(spark, "/home/users/vgian/tpcds-kit-master/tools", "hdfs://147.102.4.133:9000/tpcds/1/parquet")
 }

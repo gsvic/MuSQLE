@@ -129,17 +129,6 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
   }
 
   def cleanResults() {
-    logger.info("Deleting past intermediate results from Postgres")
-
-    val views = connection.sendQuery("""select table_name from INFORMATION_SCHEMA.views""")
-    val viewRes = Await.result(views, 20 seconds)
-    viewRes.rows.get.foreach { row =>
-      if (row(0).toString.contains("result")) {
-        logger.debug(s"Deleting view ${row(0)}")
-        Await.result(connection.sendQuery(s"drop view ${row(0)}"), 20 seconds)
-      }
-    }
-
     val tables = connection.sendQuery("""select tablename from pg_tables""")
     val res = Await.result(tables, 20 seconds)
     res.rows.get.foreach { row =>
@@ -150,6 +139,20 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     }
     logger.info("Done.")
   }
+
+  def cleanViews(): Unit = {
+    logger.info("Deleting past intermediate results from Postgres")
+
+    val views = connection.sendQuery("""select table_name from INFORMATION_SCHEMA.views""")
+    val viewRes = Await.result(views, 20 seconds)
+    viewRes.rows.get.foreach { row =>
+      if (row(0).toString.contains("result")) {
+        logger.debug(s"Deleting view ${row(0)}")
+        Await.result(connection.sendQuery(s"drop view ${row(0)}"), 20 seconds)
+      }
+    }
+  }
+
   def writeDF(dataFrame: DataFrame, name: String): Unit = {
     dataFrame.write.jdbc(jdbcURL, name, props)
   }
@@ -164,6 +167,6 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
 }
 
 object Postgres extends App{
-  val p = new Postgres(null)
-  p.cleanResults()
+val p = new Postgres(null)
+p.cleanResults()
 }
