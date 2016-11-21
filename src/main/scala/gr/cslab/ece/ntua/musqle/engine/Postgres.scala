@@ -87,6 +87,8 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     row += ")"
     table += ")"
 
+    /* TODO: Also inject statistics (#pages, #rows) using https://github.com/ossc-db/pg_dbms_stats*/
+
     val injectADummyRow = s"""INSERT INTO ${name.toLowerCase} VALUES ${row}"""
     val script = s"${table};\n${injectADummyRow};"
     Await.result(connection.sendQuery(script), 10 seconds)
@@ -101,6 +103,8 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
   override def getQueryCost(sql: String): Double = {
     logger.debug(s"Getting query cost: ${sql}")
+
+    val start = System.currentTimeMillis()
 
     val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${sql.replaceAll("`", "")}")
     val mapResult: Future[Any] = future.map(queryResult => queryResult.rows match {
@@ -126,6 +130,8 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
 
     val singleFetchCost = 1
     val cost = pageFetches * singleFetchCost
+
+    Postgres.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
     cost
   }
@@ -168,7 +174,6 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
   override def toString: String = "PostgreSQL"
 }
 
-object Postgres extends App{
-val p = new Postgres(null)
-p.cleanResults()
+object Postgres {
+  var totalGetCost = 0.0
 }

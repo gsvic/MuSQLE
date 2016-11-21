@@ -21,6 +21,8 @@ object DPJoinPlan{
     resultNumber += 1
     resultNumber
   }
+
+  var totalGetCost = 0.0
 }
 
 /**
@@ -52,7 +54,14 @@ class Join(override val left: DPJoinPlan, override val right: DPJoinPlan, val va
     s"\n${left.print(indent + "\t")}" +
     s"\n${right.print(indent + "\t")}"
 
-  override def getCost: Double = left.getCost + right.getCost + engine.getQueryCost(this.toSQL)
+  override def getCost: Double = {
+    val start = System.currentTimeMillis()
+    val cost = left.getCost + right.getCost + engine.getQueryCost(this.toSQL)
+    val elapsed = System.currentTimeMillis() - start
+    DPJoinPlan.totalGetCost += elapsed / 1000.0
+
+    cost
+  }
 }
 
 /**

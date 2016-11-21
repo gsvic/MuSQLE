@@ -4,8 +4,9 @@ import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
-import gr.cslab.ece.ntua.musqle.engine.Engine
-import gr.cslab.ece.ntua.musqle.plan.spark.Execution
+import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
+import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
+import gr.cslab.ece.ntua.musqle.plan.spark.{Execution, MuSQLEMove}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
@@ -60,41 +61,17 @@ class MusqleContext {
 
     mcLogger.info(s"Planning took ${planningTime}s.")
 
-    p.explain()
-
-    println(p.toSQL)
-
-    post.cleanResults()
+    //post.cleanResults()
 
     val executor = new Execution(sparkSession)
     val result = executor.execute(p)
     result.explain()
 
-    val c1 = df.count
-    val c2 = result.count
+    println(s"Total inject time: ${MuSQLEMove.totalInject}")
+    println(s"Total getCost time: ${DPJoinPlan.totalGetCost}")
+    println(s"Spark getCost time: ${Spark.totalGetCost}")
+    println(s"Postgres getCost time: ${Postgres.totalGetCost}")
 
-    df.explain
-    result.explain
-
-    df.take(10).foreach(println)
-    result.take(10).foreach(println)
-
-    /*
-    var sp = 0.0
-    var musqle = 0.0
-
-    val a = {
-      val start = System.currentTimeMillis()
-      musqle = df.count()
-      System.currentTimeMillis() - start
-    }
-    val b = {
-      val start = System.currentTimeMillis()
-      sp = dataFrame.count()
-      System.currentTimeMillis() - start
-    }
-    println(s"Spark: [$sp][${a / 1000.0}]\nMuSQLE: [$musqle][${b / 1000.0}]")
-    */
     null
   }
 
@@ -103,10 +80,12 @@ class MusqleContext {
 object test extends App{
   val mc = new MusqleContext()
   val q = AllQueries.tpcds1_4Queries(11)._2
+  val q2 = AllQueries.tpcds1_4Queries(6)._2
+
   val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
             |where d1.d_date_sk = d2.d_date_sk
             |and d2.d_date_sk = d3.d_date_sk
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
-  mc.query(q)
+  mc.query(q2)
 }

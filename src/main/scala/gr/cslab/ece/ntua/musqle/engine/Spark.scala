@@ -23,6 +23,7 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
   }
 
   override def inject(plan: DPJoinPlan): Unit = {
+    logger.info(s"Injecting ${plan.tmpName}")
     plan.left.engine.getDF(plan.toSQL).createOrReplaceTempView(plan.tmpName)
   }
   override def supportsMove(engine: Engine): Boolean = {
@@ -33,6 +34,7 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
     move.left.engine.getDF(move.toSQL).createOrReplaceTempView(move.tmpName)
   }
   override def getMoveCost(plan: DPJoinPlan): Double = 0.0
+
   override def getQueryCost(sql: String): Double  = {
     logger.debug(s"Getting query cost: ${sql}")
 
@@ -40,7 +42,10 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
       throw new Exception("null spark session")
     }
     //TODO: Implement Spark SQL cost estimator module
-    val c = costEstimator.estimateCost(sparkSession.sql(sql))
+    val start = System.currentTimeMillis()
+    val c = 0//costEstimator.estimateCost(sparkSession.sql(sql))
+    Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
+
     c
   }
   override def getDF(sql: String): DataFrame = sparkSession.sql(sql)
@@ -52,3 +57,6 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
   override def toString: String = {"SparkSQL"}
 }
 
+object Spark {
+  var totalGetCost = 0.0
+}
