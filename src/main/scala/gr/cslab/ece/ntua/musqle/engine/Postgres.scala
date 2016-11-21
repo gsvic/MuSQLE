@@ -93,8 +93,10 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
   }
   override def supportsMove(engine: Engine): Boolean = true
   override def move(move: DPJoinPlan): Unit = {
-    logger.info(s"Moving ${move.tmpName}")
-    this.writeDF(move.left.engine.getDF(move.toSQL), move.tmpName)
+    logger.info(s"Moving ${move.tmpName} ${move.toSQL}")
+    val moveDF = move.left.engine.getDF(move.toSQL)
+    logger.debug(moveDF.queryExecution.sparkPlan)
+    this.writeDF(moveDF, move.tmpName)
   }
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
   override def getQueryCost(sql: String): Double = {

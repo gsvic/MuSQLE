@@ -194,7 +194,7 @@ class SQLCodeGen(val info: MQueryInfo) {
           }
         }
 
-        return s"$left < $right"
+        return s"$left > $right"
       }
       case ltoet: LessThanOrEqual => {
         val left = {
@@ -229,7 +229,7 @@ class SQLCodeGen(val info: MQueryInfo) {
           }
         }
 
-        return s"$left < $right"
+        return s"$left <= $right"
       }
       case gtoet: GreaterThanOrEqual => {
         val left = {
@@ -264,7 +264,7 @@ class SQLCodeGen(val info: MQueryInfo) {
           }
         }
 
-        return s"$left < $right"
+        return s"$left >= $right"
       }
       case and: And => makeCondition(and.left) + " AND " + makeCondition(and.right)
       case or: Or => makeCondition(or.left) + " OR " + makeCondition(or.right)

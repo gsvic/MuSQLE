@@ -19,7 +19,7 @@ class MusqleContext {
 
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://vicbook:7077").appName("MuSQLE")
+    .master("spark://master:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -66,8 +66,18 @@ class MusqleContext {
 
     post.cleanResults()
 
-    //val executor = new Execution(sparkSession)
-    //executor.execute(p).explain()
+    val executor = new Execution(sparkSession)
+    val result = executor.execute(p)
+    result.explain()
+
+    val c1 = df.count
+    val c2 = result.count
+
+    df.explain
+    result.explain
+
+    df.take(10).foreach(println)
+    result.take(10).foreach(println)
 
     /*
     var sp = 0.0
@@ -98,5 +108,5 @@ object test extends App{
             |and d2.d_date_sk = d3.d_date_sk
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
-  mc.query(t)
+  mc.query(q)
 }
