@@ -102,7 +102,9 @@ class SparkSQLCost {
     }
   }
   case class BroadcastNestedLoopJoinCost(left: CostMetrics, right: CostMetrics) extends JoinCost{
-    override def getCost: Double = left.totalCost + right.totalCost
+    override def getCost: Double = {
+      left.totalCost + right.totalCost
+    }
   }
 
   case class CostMetrics(val rows: Integer, val totalCost: Double)

@@ -9,7 +9,6 @@ class Catalog {
   val mapper = new ObjectMapper()
   mapper.registerModule(DefaultScalaModule)
 
-
   val tableMap: mutable.HashMap[String, CatalogEntry] = {
   val tables = new mutable.HashMap[String, CatalogEntry]()
   val metaFolder = new File("./metastore")

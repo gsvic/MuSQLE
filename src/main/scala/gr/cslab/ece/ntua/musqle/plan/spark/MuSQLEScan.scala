@@ -19,7 +19,7 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
     .reduceLeft(_ +", "+ _)
 
   engine.createView(this, tableName, projection)
-  
+
 
   override def toString: String = {
     var str = "MuSQLEScan: "
