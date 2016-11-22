@@ -93,48 +93,31 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     val script = s"${table};\n${injectADummyRow};"
     Await.result(connection.sendQuery(script), 10 seconds)
   }
+
+  override def getCost(plan: DPJoinPlan): Double = {
+    getCostMetrics(plan).cost
+  }
+
   override def supportsMove(engine: Engine): Boolean = true
+
   override def move(move: DPJoinPlan): Unit = {
     logger.info(s"Moving ${move.tmpName} ${move.toSQL}")
     val moveDF = move.left.engine.getDF(move.toSQL)
-    logger.debug(moveDF.queryExecution.sparkPlan)
     this.writeDF(moveDF, move.tmpName)
   }
+
   override def getMoveCost(plan: DPJoinPlan): Double = 100000
-  override def getQueryCost(sql: String): Double = {
-    logger.debug(s"Getting query cost: ${sql}")
 
-    val start = System.currentTimeMillis()
-
-    val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${sql.replaceAll("`", "")}")
-    val mapResult: Future[Any] = future.map(queryResult => queryResult.rows match {
-      case Some(resultSet) => {
-        val row: RowData = resultSet.head
-        row(0)
-      }
-      case None => -1
-    })
-
-    lazy val pageFetches = {
-      Await.result(mapResult, 20 seconds)
-      val p = mapResult.value.get.get.toString
-        .split("  ")(1)
-        .split(" ")(0)
-        .split("\\.\\.")
-
-      val min = p(0).split("=")(1)
-      val max = p(1).toDouble
-
-      max
-    }
-
-    val singleFetchCost = 1
-    val cost = pageFetches * singleFetchCost
-
-    Postgres.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
-
-    cost
+  override def getRowsEstimation(plan: DPJoinPlan): Integer = {
+    getCostMetrics(plan).rows
   }
+
+  override def getDF(sql: String): DataFrame = {
+    val df = sparkSession.read.jdbc(jdbcURL, s"""(${sql}) AS SubQuery""", props)
+    df
+  }
+
+  override def toString: String = "PostgreSQL"
 
   def cleanResults() {
     val tables = connection.sendQuery("""select tablename from pg_tables""")
@@ -165,13 +148,52 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     dataFrame.write.jdbc(jdbcURL, name, props)
   }
 
+  def getCostMetrics(plan: DPJoinPlan): CostMetrics = {
+    logger.debug(s"Getting query cost: ${plan.toSQL}")
 
-  def getDF(sql: String): DataFrame = {
-    val df = sparkSession.read.jdbc(jdbcURL, s"""(${sql}) AS SubQuery""", props)
-    df
+    val start = System.currentTimeMillis()
+    val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${plan.toSQL.replaceAll("`", "")}")
+    val mapResult: Future[Any] = future.map(queryResult => queryResult.rows match {
+      case Some(resultSet) => {
+        val row: RowData = resultSet.head
+        row(0)
+      }
+      case None => -1
+    })
+
+    Await.result(mapResult, 20 seconds)
+
+    val rows = {
+      val r = mapResult.value.get.get.toString
+        .split("  ")(1)
+        .split(" ")(1)
+        .split("=")(1)
+
+
+      Integer.valueOf(r)
+    }
+
+    val pageFetches = {
+      val p = mapResult.value.get.get.toString
+        .split("  ")(1)
+        .split(" ")(0)
+        .split("\\.\\.")
+
+      val min = p(0).split("=")(1)
+      val max = p(1).toDouble
+
+      max
+    }
+
+    val singleFetchCost = 1
+    val cost = pageFetches * singleFetchCost
+
+    Postgres.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
+
+    CostMetrics(rows, cost)
   }
 
-  override def toString: String = "PostgreSQL"
+  case class CostMetrics(val rows: Integer, val cost: Double)
 }
 
 object Postgres {

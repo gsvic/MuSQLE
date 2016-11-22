@@ -34,7 +34,7 @@ class Scan(val table: Vertex, override val engine: Engine, override val info: Qu
   extends DPJoinPlan(null, null, engine, 0, info){
   override def print(indent: String): String = s"$indent*Scan $this" +
     s" Engine: [$engine], Cost: [${getCost}], [${this.tmpName}] "
-  override def getCost: Double = engine.getQueryCost(this.toSQL)
+  override def getCost: Double = engine.getCost(this)
 }
 
 /**
@@ -49,14 +49,14 @@ class Join(override val left: DPJoinPlan, override val right: DPJoinPlan, val va
   extends DPJoinPlan(null, null, engine, left.getCost + right.getCost, info){
 
   override def print(indent: String): String = s"${indent}" +
-    s"Join <${left.tmpName}, ${right.tmpName}> " +
+    s"Join [${left.tmpName}, ${right.tmpName}] " +
     s"on ${vars} , Engine: [$engine], Cost: [$getCost], [$tmpName]" +
     s"\n${left.print(indent + "\t")}" +
     s"\n${right.print(indent + "\t")}"
 
   override def getCost: Double = {
     val start = System.currentTimeMillis()
-    val cost = left.getCost + right.getCost + engine.getQueryCost(this.toSQL)
+    val cost = left.getCost + right.getCost + engine.getCost(this)
     val elapsed = System.currentTimeMillis() - start
     DPJoinPlan.totalGetCost += elapsed / 1000.0
 

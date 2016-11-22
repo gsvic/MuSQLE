@@ -43,7 +43,7 @@ class Execution(sparkSession: SparkSession) {
     if (plan.right != null) executeMovements(plan.right)
 
     if (plan.isInstanceOf[MuSQLEMove]) {
-      //plan.engine.move(plan)
+      plan.engine.move(plan)
     }
   }
 }

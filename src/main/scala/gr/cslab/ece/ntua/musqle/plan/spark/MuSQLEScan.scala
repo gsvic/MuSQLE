@@ -19,9 +19,7 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
     .reduceLeft(_ +", "+ _)
 
   engine.createView(this, tableName, projection)
-
-  //this.vertex.plan.attributeMap.foreach(attr => info.attributeToRelName.put(attr.toString(), this.tmpName))
-
+  
 
   override def toString: String = {
     var str = "MuSQLEScan: "
@@ -38,7 +36,7 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
       }
       case _ => {str += vertex.toString}
     }
-    str += s" Filter[${vertex.filter.condition.children}]"
+    str += s" Filter[${vertex.filter.condition.sql}]"
 
     str
   }

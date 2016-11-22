@@ -7,7 +7,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 abstract class Engine(){
   val logger = Logger.getLogger(this.getClass)
-  logger.setLevel(Level.DEBUG)
+  //logger.setLevel(Level.DEBUG)
   override def equals(obj: scala.Any): Boolean = {
     this.getClass.equals(obj.getClass)
   }
@@ -17,7 +17,8 @@ abstract class Engine(){
   def supportsMove(engine: Engine): Boolean
   def move(dPJoinPlan: DPJoinPlan)
   def getMoveCost(plan: DPJoinPlan): Double
-  def getQueryCost(sql: String): Double
+  def getCost(plan: DPJoinPlan): Double
+  def getRowsEstimation(plan: DPJoinPlan): Integer
   def getDF(sql: String): DataFrame
 }
 

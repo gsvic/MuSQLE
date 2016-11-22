@@ -35,25 +35,34 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
   }
   override def getMoveCost(plan: DPJoinPlan): Double = 0.0
 
-  override def getQueryCost(sql: String): Double  = {
-    logger.debug(s"Getting query cost: ${sql}")
+  override def getCost(plan: DPJoinPlan): Double  = {
+    logger.debug(s"Getting query cost: ${plan.toSQL}")
 
     if (sparkSession == null) {
       throw new Exception("null spark session")
     }
     //TODO: Implement Spark SQL cost estimator module
-    val start = System.currentTimeMillis()
-    val c = 0//costEstimator.estimateCost(sparkSession.sql(sql))
-    Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
-    c
+    plan match {
+      case scan: MuSQLEScan => {
+        0
+      }
+      case _ => {
+        val start = System.currentTimeMillis()
+        val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
+        Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
+
+        c
+      }
+    }
+
+  }
+
+  override def getRowsEstimation(plan: DPJoinPlan): Integer = {
+    val df = sparkSession.sql(plan.toSQL)
+    costEstimator.getCostMetrics(df).rows
   }
   override def getDF(sql: String): DataFrame = sparkSession.sql(sql)
-  /*
-    override def getMoveCost(plan: DPJoinPlan): Double = {
-      println("Asking Spark for move")
-      0.0
-    }*/
   override def toString: String = {"SparkSQL"}
 }
 
