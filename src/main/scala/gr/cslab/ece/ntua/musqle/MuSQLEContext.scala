@@ -3,7 +3,7 @@ package gr.cslab.ece.ntua.musqle
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.SparkSession
-import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.AllQueries
+import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.{AllQueries, FixedQueries}
 import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
 import org.apache.spark.sql.execution.datasources.LogicalRelation
@@ -60,6 +60,8 @@ class MuSQLEContext {
     logger.debug(s"Spark getCost time: ${Spark.totalGetCost}")
     logger.debug(s"Postgres getCost time: ${Postgres.totalGetCost}")
 
+    p.explain()
+
     post.cleanResults()
     new MuSQLEQuery(sparkSession, p)
   }
@@ -71,8 +73,8 @@ object test extends App{
   Logger.getLogger("akka").setLevel(Level.OFF)
 
   val mc = new MuSQLEContext()
-  val q = AllQueries.tpcds1_4Queries(11)._2
-  val q2 = AllQueries.tpcds1_4Queries(6)._2
+  val q = FixedQueries.queries(5)._2
+
 
   val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
             |where d1.d_date_sk = d2.d_date_sk
@@ -80,11 +82,12 @@ object test extends App{
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
   val start = System.currentTimeMillis()
-  val c1 = mc.query(q2).execute.count
+  val query = mc.query(q)
+  val c1 = query.execute.count
   val end = (System.currentTimeMillis() - start)/1000.0
 
   val start1 = System.currentTimeMillis()
-  val c2 = mc.sparkSession.sql(q2).count
+  val c2 = mc.sparkSession.sql(q).count
   val end1 = (System.currentTimeMillis() - start)/1000.0
 
   println(end)

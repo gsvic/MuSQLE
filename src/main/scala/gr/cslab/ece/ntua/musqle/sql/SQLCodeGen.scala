@@ -2,7 +2,7 @@ package gr.cslab.ece.ntua.musqle.sql
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark._
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
+import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, Cast, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
@@ -284,6 +284,20 @@ class SQLCodeGen(val info: MQueryInfo) {
       }
       case _ => throw new UnsupportedOperationException(s"Operator: ${expr}")
     }
+  }
+
+  private def extractKey(expr: Expression): String = {
+    expr match {
+      case ar: AttributeReference => expr.toString.replace("#","")
+      case cast: Cast => cast.child.toString.replace("#","")
+      case literal: Literal => {
+        literal.dataType match {
+          case StringType => s"""'${literal.value}'"""
+          case _ => literal.value.toString
+        }
+      }
+    }
+
   }
 
   private def parseExpression(){}

@@ -1,6 +1,7 @@
 package gr.cslab.ece.ntua.musqle.plan.spark
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
+import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
 import org.apache.spark.sql.catalyst.plans.logical.{Limit, LogicalPlan, Sort}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
@@ -9,6 +10,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
   * Created by vic on 17/11/2016.
   */
 class Execution(sparkSession: SparkSession) {
+  val logger = Logger.getLogger(classOf[Execution])
   def execute(plan: DPJoinPlan): DataFrame = {
     executeMovements(plan)
 
