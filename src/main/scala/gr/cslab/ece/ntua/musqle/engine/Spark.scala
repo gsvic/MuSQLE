@@ -49,7 +49,7 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
       }
       case _ => {
         val start = System.currentTimeMillis()
-        val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
+        val c = 0.0//costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
         Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
         c

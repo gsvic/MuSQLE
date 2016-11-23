@@ -73,7 +73,7 @@ object test extends App{
   Logger.getLogger("akka").setLevel(Level.OFF)
 
   val mc = new MuSQLEContext()
-  val q = FixedQueries.queries(5)._2
+  val q = FixedQueries.queries.last._2
 
 
   val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
@@ -81,7 +81,7 @@ object test extends App{
             |and d2.d_date_sk = d3.d_date_sk
             |and d3.d_date_sk = d4.d_date_sk""".stripMargin
 
-  val start = System.currentTimeMillis()
+  /*val start = System.currentTimeMillis()
   val query = mc.query(q)
   val c1 = query.execute.count
   val end = (System.currentTimeMillis() - start)/1000.0
@@ -93,5 +93,5 @@ object test extends App{
   println(end)
   println(c1)
   println(end1)
-  println(c2)
+  println(c2)*/
 }

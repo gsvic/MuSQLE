@@ -18,7 +18,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     val projection = scan.vertex.projections.map(attr => s"${attr.toString.replace("#", "")}")
       .reduceLeft(_ +", "+ _)
 
-    val sql = s"""SELECT $projection
+    val sql = s"""SELECT *
        |FROM ${scan.tmpName}
        |WHERE $filter""".stripMargin
 
@@ -30,8 +30,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     val conditions = subQueryTables.map(key => info.idToCondition(key))
     val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
-    val vertices = keys.map{ attribute => info.attributeToVertex.get(attribute.toString()).get
-    }
+    val vertices = keys.map(attribute => info.attributeToVertex.get(attribute.toString()).get)
     val names = findTableNames(plan)
 
     val projections = vertices
@@ -43,7 +42,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     val commaSeparatedNames = names.reduceLeft(_ + ", " + _)
 
     var SQL =
-      s"""SELECT $projections
+      s"""SELECT *
          |FROM $commaSeparatedNames""".stripMargin
 
     /*SQL += names.toList(0)
@@ -95,8 +94,11 @@ class SQLCodeGen(val info: MQueryInfo) {
           eq.left match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(eq.left.toString()).get.id
-              val key = eq.left.toString.replace("#","")
+              val key = ar.toString.replace("#","")
               key
+            }
+            case cast: Cast => {
+              cast.child.toString.replace("#","")
             }
             case literal: Literal => {
               literal.dataType match {
@@ -112,8 +114,11 @@ class SQLCodeGen(val info: MQueryInfo) {
           eq.right match{
             case ar: AttributeReference =>{
               val id = info.attributeToVertex.get(eq.right.toString()).get.id
-              val key = eq.right.toString.replace("#","")
+              val key = ar.toString.replace("#","")
               key
+            }
+            case cast: Cast => {
+              cast.child.toString.replace("#","")
             }
             case literal: Literal => {
               literal.dataType match {
