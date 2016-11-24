@@ -38,14 +38,6 @@ class DPhypSpark(sparkSession: SparkSession) extends
     }
   }
 
-  /*override def plan(): DPJoinPlan = {
-    val p = super.plan()
-    p.engine match {
-      case spark: Spark => p
-      case _ => MuSQLEMove(p, Spark(sparkSession), qInfo)
-    }
-  }*/
-
   def generateGraph(logical: LogicalPlan, projections: mutable.HashSet[Attribute]): Unit ={
     logical.children.foreach{ node =>
       if (!logical.isInstanceOf[Filter]) {

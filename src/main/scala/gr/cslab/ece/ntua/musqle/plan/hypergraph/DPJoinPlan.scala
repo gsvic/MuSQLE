@@ -8,8 +8,10 @@ abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engin
   final val resultNumber: Int = DPJoinPlan.getResultNumber
   final val tmpName: String = s"result$resultNumber"
   final val isJoin: Boolean = (left != null && right !=null)
+  var isRoot: Boolean = false
+  var projections: mutable.HashSet[String] = new mutable.HashSet[String]
 
-  val toSQL: String = "Some SQL Text..."
+  def toSQL: String = "Some SQL Text..."
   def explain() = println(this.print(""))
   def print(indent: String): String
   def getCost: Double

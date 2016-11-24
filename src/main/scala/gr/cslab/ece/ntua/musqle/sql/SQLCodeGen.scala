@@ -2,10 +2,11 @@ package gr.cslab.ece.ntua.musqle.sql
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark._
-import org.apache.spark.sql.catalyst.expressions.{And, AttributeReference, Cast, EqualTo, Expression, GreaterThan, GreaterThanOrEqual, In, IsNotNull, LessThan, LessThanOrEqual, Literal, Or}
+import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
+
 
 import scala.collection.mutable
 
@@ -14,13 +15,15 @@ class SQLCodeGen(val info: MQueryInfo) {
   def genSQL(scan: MuSQLEScan): String = {
     val tableName = matchTableName(scan.vertex.plan, this.info)
     val filter = makeCondition(scan.vertex.filter.condition)
+    val projection = scan.projections.reduceLeft(_ +", "+ _)
 
-    val projection = scan.vertex.projections.map(attr => s"${attr.toString.replace("#", "")}")
-      .reduceLeft(_ +", "+ _)
-
-    val sql = s"""SELECT *
+    val sql = s"""SELECT ${projection}
        |FROM ${scan.tmpName}
        |WHERE $filter""".stripMargin
+
+    if (scan.isRoot) {
+      val aggs = getAggregations()
+    }
 
     sql
   }
@@ -33,23 +36,16 @@ class SQLCodeGen(val info: MQueryInfo) {
     val vertices = keys.map(attribute => info.attributeToVertex.get(attribute.toString()).get)
     val names = findTableNames(plan)
 
-    val projections = vertices
-      .map(_.projections)
-      .reduceLeft(_.union(_))
-      .map(att => att.toString.replaceAll("#", ""))
-      .reduceLeft(_ + ", " + _)
+    if (plan.isRoot) {
+      val aggs = getAggregations()
+    }
 
+    val projection = plan.projections.reduceLeft(_ + ", " + _)
     val commaSeparatedNames = names.reduceLeft(_ + ", " + _)
 
     var SQL =
-      s"""SELECT *
+      s"""SELECT ${projection}
          |FROM $commaSeparatedNames""".stripMargin
-
-    /*SQL += names.toList(0)
-
-    names.toList.slice(1, tables.size).foreach{table =>
-      SQL += s""", $table"""
-    }*/
 
     var WHERE = ""
 
@@ -69,6 +65,42 @@ class SQLCodeGen(val info: MQueryInfo) {
 
     SQL += WHERE
     SQL
+  }
+
+  private def getAggregations(): String = {
+    var root = info.rootLogicalPlan
+    var aggString = ""
+    var groupBy = ""
+    var orderBy = ""
+
+    while (root.children.size < 2) {
+      root match {
+        case agg: Aggregate => {
+          if (agg.aggregateExpressions.size > 0) {
+          }
+          if (agg.groupingExpressions.size > 0) {
+            groupBy = "GROUP BY " +agg.groupingExpressions
+                .map(exp => exp.toString()
+                .replace("#", ""))
+                .reduceLeft(_ + ", " + _)
+          }
+        }
+        case sort: Sort => {
+          orderBy = "ORDER BY "+sort.order.map(attr => attr.child.toString().replace("#", "")).reduceLeft(_ +", "+_)
+        }
+        case _ => {}
+      }
+      root = root.children(0)
+    }
+
+    aggString = groupBy
+
+    /*if (!orderBy.isEmpty){
+      if (!aggString.isEmpty) { aggString += "\n" }
+      aggString += orderBy
+    }*/
+
+    aggString
   }
 
   private def getSparkPlanProjections(plan: LogicalPlan): mutable.HashSet[String] = {
@@ -304,8 +336,6 @@ class SQLCodeGen(val info: MQueryInfo) {
     }
 
   }
-
-  private def parseExpression(){}
 
   /**
     * @return A [[mutable.HashSet]] with the tables contained in the input subquery

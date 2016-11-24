@@ -16,7 +16,7 @@ class MuSQLEContext {
 
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://master:7077").appName("MuSQLE")
+    .master("spark://vicbook:7077").appName("MuSQLE")
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -73,8 +73,12 @@ object test extends App{
   Logger.getLogger("akka").setLevel(Level.OFF)
 
   val mc = new MuSQLEContext()
-  val q = FixedQueries.queries.last._2
+  val q = FixedQueries.queries(2)._2
 
+  val p = mc.query(q)
+  val df = p.execute
+
+  df.explain
 
   val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
             |where d1.d_date_sk = d2.d_date_sk

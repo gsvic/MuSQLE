@@ -1,9 +1,10 @@
 package gr.cslab.ece.ntua.musqle.plan.spark
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
+import gr.cslab.ece.ntua.musqle.sql.SQLCodeGen
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.plans.logical.{Limit, LogicalPlan, Sort}
+import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Limit, LogicalPlan, Sort}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 /**
@@ -13,9 +14,9 @@ class Execution(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[Execution])
   def execute(plan: DPJoinPlan): DataFrame = {
     executeMovements(plan)
-
+    val codeGen = new SQLCodeGen(plan.info.asInstanceOf[MQueryInfo])
     val root = plan.info.asInstanceOf[MQueryInfo].rootLogicalPlan
-    val df = plan.engine.getDF(plan.toSQL)
+    val df = plan.engine.getDF(codeGen.genSQL(plan.asInstanceOf[MuSQLEJoin]))
     val musqlePlan = df.queryExecution.optimizedPlan
 
     val fixed = prepare(root, musqlePlan)

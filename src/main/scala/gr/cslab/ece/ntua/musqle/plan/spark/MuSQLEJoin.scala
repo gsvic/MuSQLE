@@ -11,7 +11,9 @@ class MuSQLEJoin(override val left: DPJoinPlan, override val right: DPJoinPlan,
                  override val vars: mutable.HashSet[Int], override val engine: Engine, override val info: MQueryInfo)
   extends Join(left, right, vars, engine, info){
 
-  override val toSQL: String = {
+  this.projections = left.projections.union(right.projections)
+
+  override def toSQL: String = {
     val codeGenerator = new SQLCodeGen(info)
     codeGenerator.genSQL(this)
   }

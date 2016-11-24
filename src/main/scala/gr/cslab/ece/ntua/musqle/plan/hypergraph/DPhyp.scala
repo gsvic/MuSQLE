@@ -97,7 +97,9 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
     for (i <- 1 to numberOfVertices) {
         b.set(i)
     }
-    return dptable.getOptimalPlan(b)
+    val optimal =  dptable.getOptimalPlan(b)
+    optimal.isRoot = true
+    optimal
   }
 
   protected def enumerateCsgRec(b: util.BitSet, bv: util.BitSet) {

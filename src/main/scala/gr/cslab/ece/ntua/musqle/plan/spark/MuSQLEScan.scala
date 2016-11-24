@@ -7,18 +7,20 @@ import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRela
 
 case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, override val info: MQueryInfo)
   extends Scan(vertex, engine, info){
-
   val codeGen = new SQLCodeGen(info)
 
-  override val toSQL: String = {
+  val tableName = codeGen.matchTableName(vertex.plan, info)
+  vertex.plan.output.map(attr => attr.toString.replace("#", "")).foreach(this.projections.add)
+  val projection = vertex.plan.output
+    .map(attr => s"${attr.name} ${attr.toString.replace("#", "")}")
+    .reduceLeft(_ +", "+ _)
+
+  override def toSQL: String = {
     codeGen.genSQL(this)
   }
 
-  val tableName = codeGen.matchTableName(vertex.plan, info)
-  val projection = vertex.plan.output.map(attr => s"${attr.name} ${attr.toString.replace("#", "")}")
-    .reduceLeft(_ +", "+ _)
-
   engine.createView(this, tableName, projection)
+
 
 
   override def toString: String = {

@@ -8,7 +8,9 @@ import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Move}
   */
 case class MuSQLEMove(val plan: DPJoinPlan, val destEngine: Engine, override val info: MQueryInfo)
   extends Move(plan, destEngine, info){
-  override val toSQL: String = plan.toSQL
+  override def toSQL: String = plan.toSQL
+
+  this.projections = plan.projections
 
   val start = System.currentTimeMillis()
   destEngine.inject(this)
