@@ -6,6 +6,7 @@ import org.apache.spark.sql.SparkSession
 import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.{AllQueries, FixedQueries}
 import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
+import gr.cslab.ece.ntua.musqle.tools.ConfParser
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
@@ -16,7 +17,8 @@ class MuSQLEContext {
 
   lazy val sparkSession = SparkSession
     .builder()
-    .master("spark://vicbook:7077").appName("MuSQLE")
+    .master(s"spark://${ConfParser.getConf("spark.master").get}:7077")
+    .appName(ConfParser.getConf("spark.appName").get)
     .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
@@ -60,8 +62,6 @@ class MuSQLEContext {
     logger.debug(s"Spark getCost time: ${Spark.totalGetCost}")
     logger.debug(s"Postgres getCost time: ${Postgres.totalGetCost}")
 
-    p.explain()
-
     post.cleanResults()
     new MuSQLEQuery(sparkSession, p)
   }
@@ -73,12 +73,11 @@ object test extends App{
   Logger.getLogger("akka").setLevel(Level.OFF)
 
   val mc = new MuSQLEContext()
-  val q = FixedQueries.queries(2)._2
+  val q = FixedQueries.queries(0)._2
 
   val p = mc.query(q)
-  val df = p.execute
-
-  df.explain
+  println(p.sqlString)
+  p.execute.explain()
 
   val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
             |where d1.d_date_sk = d2.d_date_sk

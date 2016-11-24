@@ -13,10 +13,12 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 class Execution(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[Execution])
   def execute(plan: DPJoinPlan): DataFrame = {
+
     executeMovements(plan)
-    val codeGen = new SQLCodeGen(plan.info.asInstanceOf[MQueryInfo])
     val root = plan.info.asInstanceOf[MQueryInfo].rootLogicalPlan
-    val df = plan.engine.getDF(codeGen.genSQL(plan.asInstanceOf[MuSQLEJoin]))
+    val sql = plan.toSQL
+    println(s"Executing: ${sql}")
+    val df = plan.engine.getDF(sql)
     val musqlePlan = df.queryExecution.optimizedPlan
 
     val fixed = prepare(root, musqlePlan)

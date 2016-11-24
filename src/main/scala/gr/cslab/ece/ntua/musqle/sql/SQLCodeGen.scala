@@ -3,10 +3,10 @@ package gr.cslab.ece.ntua.musqle.sql
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.catalyst.expressions._
+import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.types.StringType
-
 
 import scala.collection.mutable
 
@@ -36,12 +36,14 @@ class SQLCodeGen(val info: MQueryInfo) {
     val vertices = keys.map(attribute => info.attributeToVertex.get(attribute.toString()).get)
     val names = findTableNames(plan)
 
-    if (plan.isRoot) {
-      val aggs = getAggregations()
-    }
-
     val projection = plan.projections.reduceLeft(_ + ", " + _)
     val commaSeparatedNames = names.reduceLeft(_ + ", " + _)
+
+    if (plan.isRoot) {
+      val exp = getAggregateExpressions()
+      plan.projections.clear()
+      exp.foreach(plan.projections.add)
+    }
 
     var SQL =
       s"""SELECT ${projection}
@@ -64,7 +66,57 @@ class SQLCodeGen(val info: MQueryInfo) {
     }
 
     SQL += WHERE
+
+    if (plan.isRoot) {
+      val aggs = getAggregations()
+      SQL += "\n"+aggs
+    }
+
     SQL
+  }
+
+  private def getAggregateExpressions(): Set[String] = {
+    var root = info.rootLogicalPlan
+    while (root.children.size < 2) {
+      root match {
+        case agg: Aggregate => {
+          if (agg.aggregateExpressions.size > 0) {
+            return agg.aggregateExpressions.map(parseAggregateExpression).toSet
+          }
+        }
+        case _ => {}
+      }
+      root = root.children(0)
+    }
+
+    Set.empty
+  }
+
+  private def parseAggregateExpression(expression: Expression): String = {
+    expression match {
+      case attRef: AttributeReference => attRef.toString.replace("#", "")
+      case alias: Alias => {
+        s"${parseAggregateExpression(alias.child)} AS ${alias.name}${alias.exprId.id}"
+      }
+      case divide: Divide => { s"${parseAggregateExpression(divide.left)}/${parseAggregateExpression(divide.right)}" }
+      case multiply: Multiply => {s"${parseAggregateExpression(multiply.left)}*${parseAggregateExpression(multiply.right)}"}
+      case subtract: Subtract => {s"${parseAggregateExpression(subtract.left)}-${parseAggregateExpression(subtract.right)}"}
+      case declarativeAgg: DeclarativeAggregate => {
+        declarativeAgg match {
+          case sum: Sum => {s"SUM(${parseAggregateExpression(sum.child)})"}
+          case avg: Average => {s"AVG(${parseAggregateExpression(avg.child)})"}
+          case count: Count => {s"COUNT(${parseAggregateExpression(count.children(0))})"}
+        }
+      }
+      case _ => {
+        if (expression.children.size > 0)
+          parseAggregateExpression(expression.children(0))
+        else
+          expression.toString()
+      }
+    }
+
+
   }
 
   private def getAggregations(): String = {
@@ -95,10 +147,10 @@ class SQLCodeGen(val info: MQueryInfo) {
 
     aggString = groupBy
 
-    /*if (!orderBy.isEmpty){
+    if (!orderBy.isEmpty){
       if (!aggString.isEmpty) { aggString += "\n" }
       aggString += orderBy
-    }*/
+    }
 
     aggString
   }

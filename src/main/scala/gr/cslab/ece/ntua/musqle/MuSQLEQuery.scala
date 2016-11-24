@@ -17,7 +17,7 @@ class MuSQLEQuery(val sparkSession: SparkSession, optimizedPlan: DPJoinPlan) {
   }
   def execute: DataFrame = {
     val executor = new Execution(sparkSession)
-    pushDownProjections(optimizedPlan)
+    //pushDownProjections(optimizedPlan)
     val result = executor.execute(optimizedPlan)
 
     result

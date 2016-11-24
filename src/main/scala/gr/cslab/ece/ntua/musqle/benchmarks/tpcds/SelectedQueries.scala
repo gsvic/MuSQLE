@@ -1,9 +1,9 @@
 package gr.cslab.ece.ntua.musqle.benchmarks.tpcds
 
 /**
-  * Created by vic on 22/11/2016.
+  * Created by vic on 24/11/2016.
   */
-object FixedQueries {
+object SelectedQueries {
   val queries = Seq(
     ("q3", """
              | SELECT dt.d_year, item.i_brand_id brand_id, item.i_brand brand,SUM(ss_ext_sales_price) sum_agg
@@ -38,7 +38,9 @@ object FixedQueries {
     ("q12", """
               | select
               |  i_item_desc, i_category, i_class, i_current_price,
-              |  sum(ws_ext_sales_price) as itemrevenue
+              |  sum(ws_ext_sales_price) as itemrevenue,
+              |  sum(ws_ext_sales_price)*100/sum(sum(ws_ext_sales_price)) over
+              |          (partition by i_class) as revenueratio
               | from
               |	web_sales, item, date_dim
               | where
@@ -50,8 +52,73 @@ object FixedQueries {
               | group by
               |	i_item_id, i_item_desc, i_category, i_class, i_current_price
               | order by
-              |	i_category, i_class, i_item_id, i_item_desc
+              |	i_category, i_class, i_item_id, i_item_desc, revenueratio
               | LIMIT 100
+            """.stripMargin),
+    ("q13", """
+              | select avg(ss_quantity)
+              |       ,avg(ss_ext_sales_price)
+              |       ,avg(ss_ext_wholesale_cost)
+              |       ,sum(ss_ext_wholesale_cost)
+              | from store_sales
+              |     ,store
+              |     ,customer_demographics
+              |     ,household_demographics
+              |     ,customer_address
+              |     ,date_dim
+              | where s_store_sk = ss_store_sk
+              | and  ss_sold_date_sk = d_date_sk and d_year = 2001
+              | and((ss_hdemo_sk=hd_demo_sk
+              |  and cd_demo_sk = ss_cdemo_sk
+              |  and cd_marital_status = 'M'
+              |  and cd_education_status = 'Advanced Degree'
+              |  and ss_sales_price between 100.00 and 150.00
+              |  and hd_dep_count = 3
+              |     )or
+              |     (ss_hdemo_sk=hd_demo_sk
+              |  and cd_demo_sk = ss_cdemo_sk
+              |  and cd_marital_status = 'S'
+              |  and cd_education_status = 'College'
+              |  and ss_sales_price between 50.00 and 100.00
+              |  and hd_dep_count = 1
+              |     ) or
+              |     (ss_hdemo_sk=hd_demo_sk
+              |  and cd_demo_sk = ss_cdemo_sk
+              |  and cd_marital_status = 'W'
+              |  and cd_education_status = '2 yr Degree'
+              |  and ss_sales_price between 150.00 and 200.00
+              |  and hd_dep_count = 1
+              |     ))
+              | and((ss_addr_sk = ca_address_sk
+              |  and ca_country = 'United States'
+              |  and ca_state in ('TX', 'OH', 'TX')
+              |  and ss_net_profit between 100 and 200
+              |     ) or
+              |     (ss_addr_sk = ca_address_sk
+              |  and ca_country = 'United States'
+              |  and ca_state in ('OR', 'NM', 'KY')
+              |  and ss_net_profit between 150 and 300
+              |     ) or
+              |     (ss_addr_sk = ca_address_sk
+              |  and ca_country = 'United States'
+              |  and ca_state in ('VA', 'TX', 'MS')
+              |  and ss_net_profit between 50 and 250
+              |     ))
+            """.stripMargin),
+    ("q15", """
+              | select ca_zip, sum(cs_sales_price)
+              | from catalog_sales, customer, customer_address, date_dim
+              | where cs_bill_customer_sk = c_customer_sk
+              | 	and c_current_addr_sk = ca_address_sk
+              | 	and ( substr(ca_zip,1,5) in ('85669', '86197','88274','83405','86475',
+              |                                   '85392', '85460', '80348', '81792')
+              | 	      or ca_state in ('CA','WA','GA')
+              | 	      or cs_sales_price > 500)
+              | 	and cs_sold_date_sk = d_date_sk
+              | 	and d_qoy = 2 and d_year = 2001
+              | group by ca_zip
+              | order by ca_zip
+              | limit 100
             """.stripMargin),
     ("q17", """
               | select i_item_id
@@ -59,9 +126,15 @@ object FixedQueries {
               |       ,s_state
               |       ,count(ss_quantity) as store_sales_quantitycount
               |       ,avg(ss_quantity) as store_sales_quantityave
+              |       ,stddev_samp(ss_quantity) as store_sales_quantitystdev
+              |       ,stddev_samp(ss_quantity)/avg(ss_quantity) as store_sales_quantitycov
               |       ,count(sr_return_quantity) as_store_returns_quantitycount
               |       ,avg(sr_return_quantity) as_store_returns_quantityave
+              |       ,stddev_samp(sr_return_quantity) as_store_returns_quantitystdev
+              |       ,stddev_samp(sr_return_quantity)/avg(sr_return_quantity) as store_returns_quantitycov
               |       ,count(cs_quantity) as catalog_sales_quantitycount ,avg(cs_quantity) as catalog_sales_quantityave
+              |       ,stddev_samp(cs_quantity)/avg(cs_quantity) as catalog_sales_quantitystdev
+              |       ,stddev_samp(cs_quantity)/avg(cs_quantity) as catalog_sales_quantitycov
               | from store_sales, store_returns, catalog_sales, date_dim d1, date_dim d2, date_dim d3, store, item
               | where d1.d_quarter_name = '2001Q1'
               |   and d1.d_date_sk = ss_sold_date_sk
@@ -115,6 +188,8 @@ object FixedQueries {
               |       ,i_class
               |       ,i_current_price
               |       ,sum(cs_ext_sales_price) as itemrevenue
+              |       ,sum(cs_ext_sales_price)*100/sum(sum(cs_ext_sales_price)) over
+              |           (partition by i_class) as revenueratio
               | from catalog_sales, item, date_dim
               | where cs_item_sk = i_item_sk
               |   and i_category in ('Sports', 'Books', 'Home')
@@ -122,7 +197,7 @@ object FixedQueries {
               | and d_date between cast('1999-02-22' as date)
               | 				and (cast('1999-02-22' as date) + interval 30 days)
               | group by i_item_id, i_item_desc, i_category, i_class, i_current_price
-              | order by i_category, i_class, i_item_id, i_item_desc
+              | order by i_category, i_class, i_item_id, i_item_desc, revenueratio
               | limit 100
             """.stripMargin)
   )

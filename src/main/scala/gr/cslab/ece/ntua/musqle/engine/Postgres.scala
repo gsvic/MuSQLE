@@ -8,6 +8,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.github.mauricio.async.db.postgresql.PostgreSQLConnection
 import com.github.mauricio.async.db.postgresql.util.URLParser
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEScan
+import gr.cslab.ece.ntua.musqle.tools.ConfParser
 import org.apache.spark.sql.types._
 
 import scala.concurrent.duration._
@@ -18,7 +19,13 @@ import scala.concurrent.{Await, Future}
   * Created by vic on 7/11/2016.
   */
 case class Postgres(sparkSession: SparkSession) extends Engine {
-  val jdbcURL = s"jdbc:postgresql://147.102.4.129:5432/tpcds1?user=musqle&password=musqle"
+  val postgresHost = ConfParser.getConf("postgres.host").get
+  val postgresPort = ConfParser.getConf("postgres.port").get
+  val postgresDB = ConfParser.getConf("postgres.db").get
+  val postgresUsr = ConfParser.getConf("postgres.user").get
+  val postgresPass = ConfParser.getConf("postgres.pass").get
+
+  val jdbcURL = s"jdbc:postgresql://${postgresHost}:${postgresPort}/${postgresDB}?user=${postgresUsr}&password=${postgresPass}"
   val props = new Properties()
   logger.info("Initializing postgres")
   props.setProperty("driver", "org.postgresql.Driver")
@@ -185,7 +192,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
       max
     }
 
-    val singleFetchCost = 1
+    val singleFetchCost = java.lang.Double.parseDouble(ConfParser.getConf("postgres.fetchCost").get)
     val cost = pageFetches * singleFetchCost
 
     Postgres.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
