@@ -34,7 +34,9 @@ Join [result9, result5] on Set(1) , Engine: [SparkSQL], Cost: [2.640107437477782
 ```
 ##Adding tables to Catalog
 1. Create a folder named 'catalog' in the project's parent directory.
-2. A table can be defined as a file with .mt extension. Two example files are provided:<br><br>
+2. A table can be defined as a file with .mt extension. Two example files are provided:<br>
+
+
 PostgreSQL
 ```javascript
 {"tableName":"date_dim","tablePath":"date_dim","engine":"postgres"}
