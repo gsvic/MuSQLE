@@ -16,25 +16,7 @@ object FixedQueries {
              | ORDER BY dt.d_year, sum_agg desc, brand_id
              | LIMIT 100
            """.stripMargin),
-    ("q7", """
-             | SELECT i_item_id,
-             |        avg(ss_quantity) agg1,
-             |        avg(ss_list_price) agg2,
-             |        avg(ss_coupon_amt) agg3,
-             |        avg(ss_sales_price) agg4
-             | FROM store_sales, customer_demographics, date_dim, item, promotion
-             | WHERE ss_sold_date_sk = d_date_sk AND
-             |       ss_item_sk = i_item_sk AND
-             |       ss_cdemo_sk = cd_demo_sk AND
-             |       ss_promo_sk = p_promo_sk AND
-             |       cd_gender = 'M' AND
-             |       cd_marital_status = 'S' AND
-             |       cd_education_status = 'College' AND
-             |       (p_channel_email = 'N' or p_channel_event = 'N') AND
-             |       d_year = 2000
-             | GROUP BY i_item_id
-             | ORDER BY i_item_id LIMIT 100
-           """.stripMargin),
+
     ("q12", """
               | select
               |  i_item_desc, i_category, i_class, i_current_price,
@@ -124,7 +106,11 @@ object FixedQueries {
               | group by i_item_id, i_item_desc, i_category, i_class, i_current_price
               | order by i_category, i_class, i_item_id, i_item_desc
               | limit 100
-            """.stripMargin)
+            """.stripMargin),
+    ("custom1", """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
+                  |where d1.d_date_sk = d2.d_date_sk
+                  |and d2.d_date_sk = d3.d_date_sk
+                  |and d3.d_date_sk = d4.d_date_sk""".stripMargin)
   )
 
 }

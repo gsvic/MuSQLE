@@ -39,6 +39,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
   }
 
   override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
+    logger.info(s"Creating view ${plan.tmpName}")
     val viewQuery =
       s"""
          |CREATE OR REPLACE VIEW ${plan.tmpName}

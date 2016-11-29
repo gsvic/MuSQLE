@@ -1,12 +1,11 @@
 package gr.cslab.ece.ntua.musqle.benchmarks.tpcds
 
+
+/*
 import com.databricks.spark.sql.perf.tpcds.Tables
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import org.apache.spark.sql.SparkSession
 
-/**
-  * Created by vic on 24/10/2016.
-  */
 object TpcDs {
   def dataGen(spark: SparkSession, dsgenDir: String, outPath: String,scaleFactor: Int = 1): Unit ={
     val catalog = Catalog.getInstance
@@ -32,4 +31,4 @@ object tpcds extends App{
 
 
   TpcDs.dataGen(spark, "/home/users/vgian/tpcds-kit-master/tools", "hdfs://147.102.4.133:9000/tpcds/1/parquet")
-}
+}*/

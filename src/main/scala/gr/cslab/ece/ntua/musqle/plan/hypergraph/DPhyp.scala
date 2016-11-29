@@ -1,7 +1,10 @@
 package gr.cslab.ece.ntua.musqle.plan.hypergraph
 
 import java.util
+
 import gr.cslab.ece.ntua.musqle.engine._
+import org.apache.log4j.Logger
+
 import scala.collection.JavaConversions._
 import scala.collection.mutable.HashSet
 
@@ -12,19 +15,23 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
   protected var queryInfo: QueryInfo
   protected var numberOfVertices: Int = 0
   protected var maxCoverage: Int = 0
-  protected final var location: util.HashMap[Int, util.List[Engine]] = new util.HashMap[Int, util.List[Engine]]()
+  protected final val location: util.HashMap[Int, util.List[Engine]] = new util.HashMap[Int, util.List[Engine]]()
   protected final val edgeGraph: util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]] =
     new util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]]
 
-  protected val dptable: DPTable = new DPTable(Seq(Engine.SPARK(null), Engine.POSTGRES(null)))
+  protected var dptable: DPTable = new DPTable(Seq(Engine.SPARK(null), Engine.POSTGRES(null)))
   protected val cacheChecks: Int = 0
   protected var totalChecks: Int = 0
   protected final val vertices: util.TreeMap[Vertex, List[(Int, Seq[Int])]] =
     new util.TreeMap[Vertex, List[(Int, Seq[Int])]]
 
+  val logger = Logger.getLogger(classOf[DPhyp])
+
   def plan(): DPJoinPlan = {
     generateGraph()
+    logger.info("Graph generated.")
     init()
+    logger.info("Initialization completed.")
     solve()
   }
   protected def generateGraph()

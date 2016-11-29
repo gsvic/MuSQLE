@@ -5,6 +5,7 @@ import java.util
 import gr.cslab.ece.ntua.musqle.engine.{Engine, Spark}
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
 import gr.cslab.ece.ntua.musqle.plan.spark._
+import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, EqualTo, Expression}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Join, LogicalPlan}
@@ -14,14 +15,21 @@ import scala.collection.JavaConversions._
 import scala.collection.mutable
 
 class DPhypSpark(sparkSession: SparkSession) extends
-  DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]){
+  DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]) {
 
-  override final val dptable = new DPTable(Seq())
+  //override var dptable = new DPTable(Seq())
   override var queryInfo: QueryInfo = new MQueryInfo()
   var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
   override def generateGraph(): Unit = {
-    qInfo.lastCondition = 1
+    this.vertices.clear()
+    this.edgeGraph.clear()
+    this.location.clear()
+    this.numberOfVertices = 0
+    this.dptable = new DPTable(Seq())
+    Vertex.resetId
+    DPJoinPlan.zeroResultNumber
+
 
     if (qInfo.rootLogicalPlan == null) {
       throw new LogicalPlanNotSetException

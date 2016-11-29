@@ -13,6 +13,7 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
   val costEstimator = new SparkSQLCost()
 
   override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
+    logger.info(s"Creating view ${plan.tmpName}")
     val viewSQL =
       s"""
         |SELECT $projection

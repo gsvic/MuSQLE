@@ -11,43 +11,43 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 
-class MuSQLEContext {
+class MuSQLEContext(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[MuSQLEContext])
   logger.setLevel(Level.DEBUG)
 
-  lazy val sparkSession = SparkSession
-    .builder()
-    .master(s"spark://${ConfParser.getConf("spark.master").get}:7077")
-    .appName(ConfParser.getConf("spark.appName").get)
-    .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
-    .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
-    .getOrCreate()
-
   val catalog = Catalog.getInstance
-  val planner: DPhypSpark = new DPhypSpark(sparkSession)
+  var planner: DPhypSpark = new DPhypSpark(sparkSession)
 
   val post = Engine.POSTGRES(sparkSession)
 
   catalog.tableMap.values.foreach { tableEntry =>
     logger.info(s"Loading: ${tableEntry}")
-  val tableDF = {
-    tableEntry.engine match {
-      case "spark" => {
-        sparkSession.read.format (tableEntry.format).load(tableEntry.tablePath)
-      }
-      case "postgres" => {
-        sparkSession.read.jdbc(post.jdbcURL, tableEntry.tablePath, post.props)
+    val tableDF = {
+      tableEntry.engine match {
+        case "spark" => {
+          sparkSession.read.format(tableEntry.format).load(tableEntry.tablePath)
+        }
+        case "postgres" => {
+          sparkSession.read.jdbc(post.jdbcURL, tableEntry.tablePath, post.props)
+        }
       }
     }
-  }
     planner.qInfo.planToTableName.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tableEntry.tableName)
     tableDF.createOrReplaceTempView(tableEntry.tableName)
+  }
+
+  def showTables: Unit = { getTableList.foreach(println)}
+  def getTableList: Seq[String] = {
+    catalog.tableMap.map { table =>
+      s"Table: ${table._1}, Engine: ${table._2.engine}, Path: ${table._2.tablePath}"
+    }.toSeq
   }
 
 
   def query(sql: String): MuSQLEQuery = {
     val df = sparkSession.sql(sql)
     val optPlan = df.queryExecution.optimizedPlan
+
     planner.setLogicalPlan(optPlan)
 
     post.cleanResults()
@@ -69,32 +69,23 @@ class MuSQLEContext {
 }
 
 object test extends App{
+  lazy val sparkSession = SparkSession
+    .builder()
+    .master(s"spark://${ConfParser.getConf("spark.master").get}:7077")
+    .appName(ConfParser.getConf("spark.appName").get)
+    .config("spark.driver.memory", ConfParser.getConf("spark.driver.memory").get)
+    .config("spark.executor.memory", ConfParser.getConf("spark.executor.memory").get)
+    .config("spark.files", "./jars/postgresql-9.4.1212.jre6.jar")
+    .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
+    .getOrCreate()
+
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
-  val mc = new MuSQLEContext()
-  val q = FixedQueries.queries(0)._2
+  val mc = new MuSQLEContext(sparkSession)
 
-  val p = mc.query(q)
-  println(p.sqlString)
-  p.execute.explain()
+  val mq = mc.query(FixedQueries.queries(0)._2)
 
-  val t = """select d1.d_date_sk, d4.d_date_sk from date_dim d1, date_dim d2, date_dim d3, date_dim d4
-            |where d1.d_date_sk = d2.d_date_sk
-            |and d2.d_date_sk = d3.d_date_sk
-            |and d3.d_date_sk = d4.d_date_sk""".stripMargin
-
-  /*val start = System.currentTimeMillis()
-  val query = mc.query(q)
-  val c1 = query.execute.count
-  val end = (System.currentTimeMillis() - start)/1000.0
-
-  val start1 = System.currentTimeMillis()
-  val c2 = mc.sparkSession.sql(q).count
-  val end1 = (System.currentTimeMillis() - start)/1000.0
-
-  println(end)
-  println(c1)
-  println(end1)
-  println(c2)*/
+  mq.explain
+  mq.execute.explain
 }

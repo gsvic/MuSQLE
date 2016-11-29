@@ -15,7 +15,12 @@ class SQLCodeGen(val info: MQueryInfo) {
   def genSQL(scan: MuSQLEScan): String = {
     val tableName = matchTableName(scan.vertex.plan, this.info)
     val filter = makeCondition(scan.vertex.filter.condition)
-    val projection = scan.projections.reduceLeft(_ +", "+ _)
+    val projection = {
+      if (!scan.projections.isEmpty) {
+        scan.projections.reduceLeft(_ + ", " + _)
+      }
+      else { "*" }
+    }
 
     val sql = s"""SELECT ${projection}
        |FROM ${scan.tmpName}
@@ -36,7 +41,12 @@ class SQLCodeGen(val info: MQueryInfo) {
     val vertices = keys.map(attribute => info.attributeToVertex.get(attribute.toString()).get)
     val names = findTableNames(plan)
 
-    val projection = plan.projections.reduceLeft(_ + ", " + _)
+    val projection = {
+      if (!plan.projections.isEmpty) {
+        plan.projections.reduceLeft(_ + ", " + _)
+      }
+      else { "*" }
+    }
     val commaSeparatedNames = names.reduceLeft(_ + ", " + _)
 
     if (plan.isRoot) {

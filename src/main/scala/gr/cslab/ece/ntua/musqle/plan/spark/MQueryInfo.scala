@@ -20,4 +20,14 @@ final class MQueryInfo extends QueryInfo{
   val idToCondition = new mutable.HashMap[Int, Expression]
   val idToVertex = new TreeMap[Int, SparkPlanVertex]()
   var lastCondition: Int = 1
+
+  def reset() = {
+    this.attributeToVertex.clear()
+    this.idToCondition.clear()
+    this.attributeToVertex.clear()
+    this.attributeToRelName.clear()
+    this.idToVertex.clear()
+    this.tableMap.clear()
+    this.lastCondition = 1
+  }
 }

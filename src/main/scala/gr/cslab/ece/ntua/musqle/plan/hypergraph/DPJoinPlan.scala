@@ -19,6 +19,7 @@ abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engin
 
 object DPJoinPlan{
   private var resultNumber = 0
+  def zeroResultNumber: Unit = { resultNumber = 0}
   def getResultNumber: Int = {
     resultNumber += 1
     resultNumber

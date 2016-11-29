@@ -26,4 +26,5 @@ case class VertexImpl(override val engines: Seq[Engine]) extends Vertex(engines)
 
 object Vertex{
   private var id: Int = 1
+  def resetId = {id = 1}
 }

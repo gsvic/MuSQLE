@@ -7,7 +7,7 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 
 abstract class Engine(){
   val logger = Logger.getLogger(this.getClass)
-  //logger.setLevel(Level.DEBUG)
+  logger.setLevel(Level.OFF)
   override def equals(obj: scala.Any): Boolean = {
     this.getClass.equals(obj.getClass)
   }

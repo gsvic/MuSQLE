@@ -17,7 +17,9 @@ class Execution(sparkSession: SparkSession) {
     executeMovements(plan)
     val root = plan.info.asInstanceOf[MQueryInfo].rootLogicalPlan
     val sql = plan.toSQL
-    println(s"Executing: ${sql}")
+
+    logger.info(s"Executing: ${sql}")
+
     val df = plan.engine.getDF(sql)
     val musqlePlan = df.queryExecution.optimizedPlan
 
@@ -44,6 +46,7 @@ class Execution(sparkSession: SparkSession) {
   }
 
   def executeMovements(plan: DPJoinPlan): Unit = {
+    logger.info("Movements...")
     if (plan.left != null) executeMovements(plan.left)
     if (plan.right != null) executeMovements(plan.right)
 
