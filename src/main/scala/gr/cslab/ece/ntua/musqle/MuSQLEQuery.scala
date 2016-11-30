@@ -1,6 +1,6 @@
 package gr.cslab.ece.ntua.musqle
 
-import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Join, Move}
+import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, Expression}
 import org.apache.spark.sql.catalyst.plans.logical.Project
@@ -9,12 +9,15 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import scala.collection.mutable
 
 /**
-  * Created by vic on 22/11/2016.
+  * Represents the final - optimized query
+  * @param sparkSession: The current SparkSession
+  * @param optimizedPlan: The optimized query plan
   */
 class MuSQLEQuery(val sparkSession: SparkSession, optimizedPlan: DPJoinPlan) {
   val sqlString: String = {
     optimizedPlan.toSQL
   }
+
   def execute: DataFrame = {
     val executor = new Execution(sparkSession)
     //pushDownProjections(optimizedPlan)
@@ -22,6 +25,7 @@ class MuSQLEQuery(val sparkSession: SparkSession, optimizedPlan: DPJoinPlan) {
 
     result
   }
+
   def explain: Unit = {
     optimizedPlan.explain()
   }

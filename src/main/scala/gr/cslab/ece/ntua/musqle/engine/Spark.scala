@@ -1,5 +1,6 @@
 package gr.cslab.ece.ntua.musqle.engine
 
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
 import gr.cslab.ece.ntua.musqle.cost.SparkSQLCost
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEScan
@@ -9,8 +10,8 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   * Created by vic on 2/11/2016.
   */
 
-case class Spark(val sparkSession: SparkSession) extends Engine {
-  val costEstimator = new SparkSQLCost()
+case class Spark(val sparkSession: SparkSession, mc: MuSQLEContext) extends Engine {
+  val costEstimator = new SparkSQLCost(mc)
 
   override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
     logger.info(s"Creating view ${plan.tmpName}")
@@ -45,12 +46,9 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
     //TODO: Implement Spark SQL cost estimator module
 
     plan match {
-      case scan: MuSQLEScan => {
-        0
-      }
       case _ => {
         val start = System.currentTimeMillis()
-        val c = 0.0//costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
+        val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
         Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
         c
@@ -59,7 +57,7 @@ case class Spark(val sparkSession: SparkSession) extends Engine {
 
   }
 
-  override def getRowsEstimation(plan: DPJoinPlan): Integer = {
+  override def getRowsEstimation(plan: DPJoinPlan): Long = {
     val df = sparkSession.sql(plan.toSQL)
     costEstimator.getCostMetrics(df).rows
   }

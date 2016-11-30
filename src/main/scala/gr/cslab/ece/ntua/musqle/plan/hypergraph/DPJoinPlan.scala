@@ -6,12 +6,13 @@ import scala.collection.mutable
 abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engine: Engine,
                           var cost: Double, val info: QueryInfo) {
   final val resultNumber: Int = DPJoinPlan.getResultNumber
-  final val tmpName: String = s"result$resultNumber"
+  final val tmpName: String = s"mtpmres$resultNumber"
   final val isJoin: Boolean = (left != null && right !=null)
   var isRoot: Boolean = false
   var projections: mutable.HashSet[String] = new mutable.HashSet[String]
 
   def toSQL: String = "Some SQL Text..."
+  def getRowsEstimation: Long = engine.getRowsEstimation(this)
   def explain() = println(this.print(""))
   def print(indent: String): String
   def getCost: Double
@@ -34,9 +35,9 @@ object DPJoinPlan{
   * @param engine The engine which hosts the table
   * */
 class Scan(val table: Vertex, override val engine: Engine, override val info: QueryInfo)
-  extends DPJoinPlan(null, null, engine, 0, info){
-  override def print(indent: String): String = s"$indent*Scan $this" +
-    s" Engine: [$engine], Cost: [${getCost}], [${this.tmpName}] "
+  extends DPJoinPlan(null, null, engine, 5, info){
+  override def print(indent: String): String = s"$indent*Scan $this, " +
+    s"Engine: [$engine], Cost: [${getCost}], [${this.tmpName}] "
   override def getCost: Double = engine.getCost(this)
 }
 
@@ -79,4 +80,6 @@ class Move(val dpJoinPlan: DPJoinPlan, override val engine: Engine, override val
     s"to $engine, Cost $cost [$tmpName]\n${dpJoinPlan.print(indent + "\t")}"
   def compareTo(o: DPJoinPlan): Int = cost.compareTo(o.getCost)
   def getCost: Double = dpJoinPlan.getCost + engine.getMoveCost(dpJoinPlan)
+
+  override def getRowsEstimation: Long = left.engine.getRowsEstimation(left)
 }

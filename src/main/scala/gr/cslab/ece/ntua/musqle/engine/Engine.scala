@@ -1,5 +1,6 @@
 package gr.cslab.ece.ntua.musqle.engine
 
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Scan}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEScan
 import org.apache.log4j.{Level, Logger}
@@ -18,7 +19,7 @@ abstract class Engine(){
   def move(dPJoinPlan: DPJoinPlan)
   def getMoveCost(plan: DPJoinPlan): Double
   def getCost(plan: DPJoinPlan): Double
-  def getRowsEstimation(plan: DPJoinPlan): Integer
+  def getRowsEstimation(plan: DPJoinPlan): Long
   def getDF(sql: String): DataFrame
 }
 
@@ -27,6 +28,6 @@ case class Json() extends HDFSFormat
 case class Parquet() extends HDFSFormat
 
 object Engine{
-  def SPARK(sparkSession: SparkSession) = Spark(sparkSession)
+  def SPARK(sparkSession: SparkSession, mc: MuSQLEContext) = Spark(sparkSession, mc)
   def POSTGRES(sparkSession: SparkSession)  = Postgres(sparkSession)
 }

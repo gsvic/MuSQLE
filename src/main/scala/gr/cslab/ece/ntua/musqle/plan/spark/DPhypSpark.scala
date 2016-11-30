@@ -1,23 +1,21 @@
 package gr.cslab.ece.ntua.musqle.spark
 
-import java.util
-
-import gr.cslab.ece.ntua.musqle.engine.{Engine, Spark}
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
+import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
 import gr.cslab.ece.ntua.musqle.plan.spark._
-import org.apache.log4j.Logger
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.expressions.{And, Attribute, AttributeReference, EqualTo, Expression}
 import org.apache.spark.sql.catalyst.plans.logical.{Filter, Join, LogicalPlan}
-import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-class DPhypSpark(sparkSession: SparkSession) extends
+class DPhypSpark(sparkSession: SparkSession, mc: MuSQLEContext) extends
   DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]) {
 
-  //override var dptable = new DPTable(Seq())
+  this.dptable = new DPTable(Seq(Engine.SPARK(sparkSession, mc), Engine.POSTGRES(sparkSession)))
   override var queryInfo: QueryInfo = new MQueryInfo()
   var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
@@ -74,6 +72,7 @@ class DPhypSpark(sparkSession: SparkSession) extends
   def setLogicalPlan(logicalPlan: LogicalPlan): Unit ={
     this.qInfo.rootLogicalPlan = logicalPlan
   }
+
   private def addScan(logicalRelation: LogicalRelation, filter: Filter,
                       projections: mutable.HashSet[Attribute]): Unit ={
     val vertex = new SparkPlanVertex(logicalRelation, Seq(getEngine(logicalRelation)), filter, projections)
@@ -111,7 +110,7 @@ class DPhypSpark(sparkSession: SparkSession) extends
   }
   private def getEngine(logicalRelation: LogicalRelation): Engine = {
     if (logicalRelation.relation.toString.contains("JDBC")) { Engine.POSTGRES(sparkSession)}
-    else { Engine.SPARK(sparkSession) }
+    else { Engine.SPARK(sparkSession, mc) }
 
   }
 

@@ -1,9 +1,9 @@
 package gr.cslab.ece.ntua.musqle
 
+import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.FixedQueries
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.SparkSession
-import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.{AllQueries, FixedQueries}
 import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
 import gr.cslab.ece.ntua.musqle.tools.ConfParser
@@ -16,12 +16,14 @@ class MuSQLEContext(sparkSession: SparkSession) {
   logger.setLevel(Level.DEBUG)
 
   val catalog = Catalog.getInstance
-  var planner: DPhypSpark = new DPhypSpark(sparkSession)
-
+  var planner: DPhypSpark = new DPhypSpark(sparkSession, this)
   val post = Engine.POSTGRES(sparkSession)
 
-  catalog.tableMap.values.foreach { tableEntry =>
+
+  /* Initialization */
+  catalog.getTableMap.values.foreach { tableEntry =>
     logger.info(s"Loading: ${tableEntry}")
+
     val tableDF = {
       tableEntry.engine match {
         case "spark" => {
@@ -35,10 +37,25 @@ class MuSQLEContext(sparkSession: SparkSession) {
     planner.qInfo.planToTableName.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tableEntry.tableName)
     tableDF.createOrReplaceTempView(tableEntry.tableName)
   }
+  /* Initialization */
+
+  def add(name: String, path: String, engine: String, format: String): Unit = {
+    val df = engine match {
+      case "spark" => {
+        sparkSession.read.format(format).load(path)
+      }
+      case "postgres" => {
+        sparkSession.read.jdbc(post.jdbcURL, path, post.props)
+      }
+    }
+
+     catalog.add(name, path, engine, format, df.count())
+  }
 
   def showTables: Unit = { getTableList.foreach(println)}
+
   def getTableList: Seq[String] = {
-    catalog.tableMap.map { table =>
+    catalog.getTableMap.map { table =>
       s"Table: ${table._1}, Engine: ${table._2.engine}, Path: ${table._2.tablePath}"
     }.toSeq
   }
@@ -62,7 +79,6 @@ class MuSQLEContext(sparkSession: SparkSession) {
     logger.debug(s"Spark getCost time: ${Spark.totalGetCost}")
     logger.debug(s"Postgres getCost time: ${Postgres.totalGetCost}")
 
-    post.cleanResults()
     new MuSQLEQuery(sparkSession, p)
   }
 
@@ -82,10 +98,8 @@ object test extends App{
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
+
   val mc = new MuSQLEContext(sparkSession)
 
-  val mq = mc.query(FixedQueries.queries(0)._2)
-
-  mq.explain
-  mq.execute.explain
+  mc.query(FixedQueries.queries(0)._2).explain
 }

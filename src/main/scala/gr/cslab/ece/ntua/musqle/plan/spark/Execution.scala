@@ -1,19 +1,21 @@
 package gr.cslab.ece.ntua.musqle.plan.spark
 
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
-import gr.cslab.ece.ntua.musqle.sql.SQLCodeGen
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.catalyst.plans.logical.{Aggregate, Limit, LogicalPlan, Sort}
+import org.apache.spark.sql.catalyst.plans.logical.{Limit, LogicalPlan}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 
 /**
-  * Created by vic on 17/11/2016.
+  * The execution context
+  * @param sparkSession: The current SparkSession
   */
 class Execution(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[Execution])
-  def execute(plan: DPJoinPlan): DataFrame = {
 
+  /** Executes a [[DPJoinPlan]] and returns the result as a Spark SQL [[DataFrame]] */
+  def execute(plan: DPJoinPlan): DataFrame = {
+    //Execute movements first, then execute the final query plan
     executeMovements(plan)
     val root = plan.info.asInstanceOf[MQueryInfo].rootLogicalPlan
     val sql = plan.toSQL
@@ -28,11 +30,12 @@ class Execution(sparkSession: SparkSession) {
     new Dataset[Row](sparkSession, fixed, RowEncoder(df.queryExecution.analyzed.schema))
   }
 
+  /** Prepares a plan - Adds a logical limit if needs */
   def prepare(plan: LogicalPlan, musqlePlan: LogicalPlan): LogicalPlan = {
     var current = musqlePlan
     var node = plan
 
-    while (node.children.size < 2) {
+    while (node.children.size < 2 && node.children.size > 0) {
       node match {
         case Limit(expression, child) => {
           current =  Limit(expression, current)
@@ -45,6 +48,8 @@ class Execution(sparkSession: SparkSession) {
     current
   }
 
+  /** This method performs the required data movements
+    * among the engines before the execution of the final query.*/
   def executeMovements(plan: DPJoinPlan): Unit = {
     logger.info("Movements...")
     if (plan.left != null) executeMovements(plan.left)

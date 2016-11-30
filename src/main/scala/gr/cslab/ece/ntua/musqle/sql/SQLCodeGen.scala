@@ -14,7 +14,6 @@ class SQLCodeGen(val info: MQueryInfo) {
 
   def genSQL(scan: MuSQLEScan): String = {
     val tableName = matchTableName(scan.vertex.plan, this.info)
-    val filter = makeCondition(scan.vertex.filter.condition)
     val projection = {
       if (!scan.projections.isEmpty) {
         scan.projections.reduceLeft(_ + ", " + _)
@@ -22,12 +21,24 @@ class SQLCodeGen(val info: MQueryInfo) {
       else { "*" }
     }
 
-    val sql = s"""SELECT ${projection}
-       |FROM ${scan.tmpName}
-       |WHERE $filter""".stripMargin
+    if (scan.isRoot) {
+      val exp = getAggregateExpressions()
+      scan.projections.clear()
+      exp.foreach(scan.projections.add)
+    }
+
+
+    var sql = s"""SELECT ${projection}
+       |FROM ${scan.tmpName}""".stripMargin
+
+    if (scan.vertex.filter != null) {
+      val filter = makeCondition(scan.vertex.filter.condition)
+      sql += s" WHERE $filter"
+    }
 
     if (scan.isRoot) {
       val aggs = getAggregations()
+      sql += "\n"+aggs
     }
 
     sql
@@ -87,7 +98,7 @@ class SQLCodeGen(val info: MQueryInfo) {
 
   private def getAggregateExpressions(): Set[String] = {
     var root = info.rootLogicalPlan
-    while (root.children.size < 2) {
+    while (root.children.size < 2 && root.children.size > 0) {
       root match {
         case agg: Aggregate => {
           if (agg.aggregateExpressions.size > 0) {
@@ -135,7 +146,7 @@ class SQLCodeGen(val info: MQueryInfo) {
     var groupBy = ""
     var orderBy = ""
 
-    while (root.children.size < 2) {
+    while (root.children.size < 2 && root.children.size > 0) {
       root match {
         case agg: Aggregate => {
           if (agg.aggregateExpressions.size > 0) {

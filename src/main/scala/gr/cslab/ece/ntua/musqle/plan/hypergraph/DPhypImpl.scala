@@ -10,7 +10,7 @@ import scala.collection.mutable
 class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(){
   override var queryInfo: QueryInfo = new QueryInfo()
 
-  val eng = Seq(Spark(null))
+  val eng = Seq(Spark(null, null))
   val eng2 = Seq(Postgres(null))
 
   override def generateGraph(): Unit ={
@@ -23,7 +23,7 @@ class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(){
     /*
     addVertex(VertexImpl(eng2), List( (2, Seq(2,3)), (3, Seq(5))))
 
-    addVertex(VertexImpl(eng2).setName("toTRAPEZI"), List((3, Seq(3,4,7)), (4, Seq(6))))
+    addVertex(VertexImpl(eng2).setName("theTable"), List((3, Seq(3,4,7)), (4, Seq(6))))
 
     addVertex(VertexImpl(eng), List( (4, Seq(5)), (12, Seq(8)) ))
     addVertex(VertexImpl(eng), List( (4, Seq(6)), (3, Seq(5)) ))

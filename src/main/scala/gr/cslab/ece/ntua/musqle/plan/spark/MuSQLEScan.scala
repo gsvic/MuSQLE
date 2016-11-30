@@ -24,22 +24,6 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
 
 
   override def toString: String = {
-    var str = "MuSQLEScan: "
-    this.vertex.plan match {
-      case lr: LogicalRelation => {
-        lr.relation match {
-          case hdfs: HadoopFsRelation => {
-            str += s"${lr.relation.asInstanceOf[HadoopFsRelation].location.paths(0)}"
-          }
-          case _ => {
-            str += lr.relation.schema
-          }
-        }
-      }
-      case _ => {str += vertex.toString}
-    }
-    str += s" Filter[${vertex.filter.condition.sql}]"
-
-    str
+    s"MuSQLEScan: ${tableName}"
   }
 }

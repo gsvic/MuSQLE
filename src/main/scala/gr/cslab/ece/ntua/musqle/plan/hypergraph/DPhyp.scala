@@ -19,7 +19,7 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
   protected final val edgeGraph: util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]] =
     new util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]]
 
-  protected var dptable: DPTable = new DPTable(Seq(Engine.SPARK(null), Engine.POSTGRES(null)))
+  protected var dptable: DPTable = new DPTable(Seq())
   protected val cacheChecks: Int = 0
   protected var totalChecks: Int = 0
   protected final val vertices: util.TreeMap[Vertex, List[(Int, Seq[Int])]] =
