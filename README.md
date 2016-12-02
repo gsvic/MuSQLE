@@ -45,3 +45,8 @@ Parquet file in HDFS
 ```javascript
 {"tableName":"item","tablePath":"hdfs://master:9000/tpcds/1/item","engine":"spark","format":"parquet"}
 ```
+
+Also, a table can be added by calling the `add` method of `MuSQLEContext`
+```scala
+mc.add("customer", "hdfs://master:9000/tpcds1/customer", "spark", "parquet")
+```
