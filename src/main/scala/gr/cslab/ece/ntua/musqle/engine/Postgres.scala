@@ -63,7 +63,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     var row = "("
     val sc = df.schema.iterator
 
-    sc.foreach{dt =>
+    sc.foreach{ dt =>
       dt.dataType match {
         case IntegerType => {
           row += "1"
@@ -103,7 +103,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     /* TODO: Stats injection - https://github.com/ossc-db/pg_dbms_stats*/
     val getOId = s"SELECT oid FROM pg_class WHERE relname = '${name.toLowerCase}' "
     val estimRows = plan.getRowsEstimation
-    val pages = estimRows * 0.01
+    var pages = sc.map(_.dataType.defaultSize).sum / 16
     val injectResult = s"""INSERT INTO  dbms_stats.relation_stats_locked VALUES( (${getOId}), '${name.toLowerCase}', ${pages}, ${estimRows})"""
     /* Stats injection*/
 
