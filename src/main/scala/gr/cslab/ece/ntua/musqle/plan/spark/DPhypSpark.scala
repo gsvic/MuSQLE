@@ -1,6 +1,7 @@
 package gr.cslab.ece.ntua.musqle.spark
 
 import gr.cslab.ece.ntua.musqle.MuSQLEContext
+import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.engine.Engine
 import gr.cslab.ece.ntua.musqle.plan.hypergraph._
 import gr.cslab.ece.ntua.musqle.plan.spark._
@@ -12,23 +13,17 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-class DPhypSpark(sparkSession: SparkSession, mc: MuSQLEContext) extends
+class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext) extends
   DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]) {
 
-  this.dptable = new DPTable(Seq(Engine.SPARK(sparkSession, mc), Engine.POSTGRES(sparkSession)))
-  override var queryInfo: QueryInfo = new MQueryInfo()
+  this.dptable = new DPTable(Seq(Engine.SPARK(sparkSession, mc), Engine.POSTGRES(sparkSession, mc)))
+  override var queryInfo: QueryInfo = new MQueryInfo(catalog.planToTableName)
   var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
+  Vertex.resetId
+  DPJoinPlan.zeroResultNumber
+
   override def generateGraph(): Unit = {
-    this.vertices.clear()
-    this.edgeGraph.clear()
-    this.location.clear()
-    this.numberOfVertices = 0
-    this.dptable = new DPTable(Seq())
-    Vertex.resetId
-    DPJoinPlan.zeroResultNumber
-
-
     if (qInfo.rootLogicalPlan == null) {
       throw new LogicalPlanNotSetException
     }
@@ -42,6 +37,16 @@ class DPhypSpark(sparkSession: SparkSession, mc: MuSQLEContext) extends
         addVertex(vertex, vertex.connections.toList)
       }
     }
+  }
+
+  def reset() = {
+    this.vertices.clear()
+    this.edgeGraph.clear()
+    this.location.clear()
+    this.numberOfVertices = 0
+    this.dptable = new DPTable(Seq())
+    Vertex.resetId
+    DPJoinPlan.zeroResultNumber
   }
 
   def generateGraph(logical: LogicalPlan, projections: mutable.HashSet[Attribute]): Unit ={
@@ -75,7 +80,10 @@ class DPhypSpark(sparkSession: SparkSession, mc: MuSQLEContext) extends
 
   private def addScan(logicalRelation: LogicalRelation, filter: Filter,
                       projections: mutable.HashSet[Attribute]): Unit ={
-    val vertex = new SparkPlanVertex(logicalRelation, Seq(getEngine(logicalRelation)), filter, projections)
+    val engines = catalog.tableEngines.get(logicalRelation).get
+    val vertex = new SparkPlanVertex(logicalRelation,
+      engines, filter, projections)
+
     qInfo.tableMap.put(logicalRelation.hashCode(), vertex)
     qInfo.idToVertex.put(vertex.id, vertex)
 
@@ -109,7 +117,7 @@ class DPhypSpark(sparkSession: SparkSession, mc: MuSQLEContext) extends
     }
   }
   private def getEngine(logicalRelation: LogicalRelation): Engine = {
-    if (logicalRelation.relation.toString.contains("JDBC")) { Engine.POSTGRES(sparkSession)}
+    if (logicalRelation.relation.toString.contains("JDBC")) { Engine.POSTGRES(sparkSession, mc)}
     else { Engine.SPARK(sparkSession, mc) }
 
   }

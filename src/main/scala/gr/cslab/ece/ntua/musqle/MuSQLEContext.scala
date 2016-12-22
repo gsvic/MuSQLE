@@ -1,56 +1,20 @@
 package gr.cslab.ece.ntua.musqle
 
-import gr.cslab.ece.ntua.musqle.benchmarks.tpcds.FixedQueries
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.SparkSession
-import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
+import gr.cslab.ece.ntua.musqle.engine.{Postgres, Spark}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
 import gr.cslab.ece.ntua.musqle.tools.ConfParser
-import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
+import org.apache.spark.SparkContext
 
 class MuSQLEContext(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[MuSQLEContext])
   logger.setLevel(Level.DEBUG)
 
-  val catalog = Catalog.getInstance
-  var planner: DPhypSpark = new DPhypSpark(sparkSession, this)
-  val post = Engine.POSTGRES(sparkSession)
-
-
-  /* Initialization */
-  catalog.getTableMap.values.foreach { tableEntry =>
-    logger.info(s"Loading: ${tableEntry}")
-
-    val tableDF = {
-      tableEntry.engine match {
-        case "spark" => {
-          sparkSession.read.format(tableEntry.format).load(tableEntry.tablePath)
-        }
-        case "postgres" => {
-          sparkSession.read.jdbc(post.jdbcURL, tableEntry.tablePath, post.props)
-        }
-      }
-    }
-    planner.qInfo.planToTableName.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tableEntry.tableName)
-    tableDF.createOrReplaceTempView(tableEntry.tableName)
-  }
-  /* Initialization */
-
-  def add(name: String, path: String, engine: String, format: String): Unit = {
-    val df = engine match {
-      case "spark" => {
-        sparkSession.read.format(format).load(path)
-      }
-      case "postgres" => {
-        sparkSession.read.jdbc(post.jdbcURL, path, post.props)
-      }
-    }
-
-     catalog.add(name, path, engine, format, df.count())
-  }
+  val catalog = new Catalog(sparkSession, this)
 
   def showTables: Unit = { getTableList.foreach(println)}
 
@@ -62,13 +26,13 @@ class MuSQLEContext(sparkSession: SparkSession) {
 
 
   def query(sql: String): MuSQLEQuery = {
+    val planner = new DPhypSpark(sparkSession, catalog, this)
     val df = sparkSession.sql(sql)
     val optPlan = df.queryExecution.optimizedPlan
 
-    planner.setLogicalPlan(optPlan)
+    catalog.engines.foreach(_.cleanTmpResults)
 
-    post.cleanResults()
-    post.cleanViews()
+    planner.setLogicalPlan(optPlan)
 
     val start = System.currentTimeMillis()
     val p = planner.plan()
@@ -85,6 +49,7 @@ class MuSQLEContext(sparkSession: SparkSession) {
 }
 
 object test extends App{
+  SparkContext
   lazy val sparkSession = SparkSession
     .builder()
     .master(s"spark://${ConfParser.getConf("spark.master").get}:7077")
@@ -100,6 +65,10 @@ object test extends App{
 
 
   val mc = new MuSQLEContext(sparkSession)
+  val q2 = mc.query("select * from item, store_returns where i_item_sk = sr_item_sk and i_item_sk > 5")
+  q2.explain
+  println(q2.sqlString)
+  q2.execute.count
 
-  mc.query(FixedQueries.queries(0)._2).explain
+  //mc.query(FixedQueries.queries(0)._2).explain
 }

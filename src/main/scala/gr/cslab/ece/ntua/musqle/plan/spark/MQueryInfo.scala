@@ -10,9 +10,8 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 
 import scala.collection.mutable
 
-final class MQueryInfo extends QueryInfo{
+final class MQueryInfo(val planToTableName : mutable.HashMap[LogicalRelation, String]) extends QueryInfo{
   var rootLogicalPlan: LogicalPlan = null
-  val planToTableName : mutable.HashMap[LogicalRelation, String]  = new mutable.HashMap[LogicalRelation, String]()
   val tableNameToEngine : mutable.HashMap[String, Engine]  = new mutable.HashMap[String, Engine]()
   val tableMap: mutable.HashMap[Int, SparkPlanVertex] = new mutable.HashMap[Int, SparkPlanVertex]
   val attributeToVertex = new mutable.HashMap[String, SparkPlanVertex]

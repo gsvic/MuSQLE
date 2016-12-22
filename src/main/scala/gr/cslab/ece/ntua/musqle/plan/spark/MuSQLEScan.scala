@@ -21,8 +21,6 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
 
   engine.createView(this, tableName, projection)
 
-
-
   override def toString: String = {
     s"MuSQLEScan: ${tableName}"
   }

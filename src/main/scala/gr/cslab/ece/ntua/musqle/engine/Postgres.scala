@@ -7,6 +7,7 @@ import gr.cslab.ece.ntua.musqle.plan.hypergraph.{DPJoinPlan, Scan}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import com.github.mauricio.async.db.postgresql.PostgreSQLConnection
 import com.github.mauricio.async.db.postgresql.util.URLParser
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEScan
 import gr.cslab.ece.ntua.musqle.tools.ConfParser
 import org.apache.spark.sql.types._
@@ -18,7 +19,7 @@ import scala.concurrent.{Await, Future}
 /**
   * Created by vic on 7/11/2016.
   */
-case class Postgres(sparkSession: SparkSession) extends Engine {
+case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engine {
   val postgresHost = ConfParser.getConf("postgres.host").get
   val postgresPort = ConfParser.getConf("postgres.port").get
   val postgresDB = ConfParser.getConf("postgres.db").get
@@ -46,7 +47,7 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
     logger.info(s"Creating view ${plan.tmpName}")
     val viewQuery =
       s"""
-         |CREATE OR REPLACE VIEW ${plan.tmpName}
+         |CREATE VIEW ${plan.tmpName}
          |AS SELECT $projection
          |FROM $srcTable
          |""".stripMargin
@@ -162,6 +163,11 @@ case class Postgres(sparkSession: SparkSession) extends Engine {
         Await.result(connection.sendQuery(s"drop view ${row(0)}"), 20 seconds)
       }
     }
+  }
+
+  override def cleanTmpResults: Unit = {
+    cleanViews()
+    cleanResults()
   }
 
   def writeDF(dataFrame: DataFrame, name: String): Unit = {

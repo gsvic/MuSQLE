@@ -11,7 +11,7 @@ class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(){
   override var queryInfo: QueryInfo = new QueryInfo()
 
   val eng = Seq(Spark(null, null))
-  val eng2 = Seq(Postgres(null))
+  val eng2 = Seq(Postgres(null, null))
 
   override def generateGraph(): Unit ={
     addVertex(VertexImpl(eng), List((1, Seq(2))))

@@ -51,7 +51,7 @@ case class Spark(val sparkSession: SparkSession, mc: MuSQLEContext) extends Engi
         val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
         Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
-        c
+        0.0
       }
     }
 
