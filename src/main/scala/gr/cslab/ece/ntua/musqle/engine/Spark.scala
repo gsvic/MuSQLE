@@ -10,17 +10,21 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
   * Created by vic on 2/11/2016.
   */
 
-case class Spark(val sparkSession: SparkSession, mc: MuSQLEContext) extends Engine {
+case class Spark(override val sparkSession: SparkSession, override val mc: MuSQLEContext)
+  extends Engine(sparkSession, mc) {
   val costEstimator = new SparkSQLCost(mc)
 
-  override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
+  override def createView(plan: MuSQLEScan, srcTable: String, path: String, projection: String): Unit = {
     logger.info(s"Creating view ${plan.tmpName}")
     val viewSQL =
       s"""
         |SELECT $projection
-        |FROM $srcTable
+        |FROM ${plan.tmpName}
       """.stripMargin
 
+    val df = sparkSession.read.parquet(path)
+
+    df.createOrReplaceTempView(plan.tmpName)
     sparkSession.sql(viewSQL).createOrReplaceTempView(plan.tmpName)
   }
 
@@ -45,16 +49,18 @@ case class Spark(val sparkSession: SparkSession, mc: MuSQLEContext) extends Engi
     }
     //TODO: Implement Spark SQL cost estimator module
 
-    plan match {
+    val cost = plan match {
       case _ => {
         val start = System.currentTimeMillis()
         val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
         Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
-        0.0
+        c
       }
     }
 
+    logger.debug(s"Getting query cost: ${plan.toSQL}: ${cost}")
+    cost
   }
 
   override def getRowsEstimation(plan: DPJoinPlan): Long = {

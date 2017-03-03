@@ -36,7 +36,7 @@ object SparkSQLCostModel{
       case logicalRelation: LogicalRelation => {
         logicalRelation.relation match {
           case hdfs: HadoopFsRelation => {
-            val partitions = hdfs.location.allFiles().size
+            val partitions = 1// hdfs.location.allFiles().size
             val sizeInBytes = logicalRelation.statistics.sizeInBytes
             CostModelMetrics(partitions, sizeInBytes)
           }

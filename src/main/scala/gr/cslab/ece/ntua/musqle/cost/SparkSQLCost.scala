@@ -27,7 +27,7 @@ class SparkSQLCost(mc: MuSQLEContext) {
         val rows = {
           scan.relation match {
             case hdfs: HadoopFsRelation => {
-              val path = hdfs.location.paths(0).toString
+              val path = hdfs.location.rootPaths(0).toUri.toString
               val table = mc.catalog.getTableEntryByPath(path)
               table.rows
             }

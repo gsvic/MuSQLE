@@ -3,7 +3,7 @@ package gr.cslab.ece.ntua.musqle
 import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.SparkSession
-import gr.cslab.ece.ntua.musqle.engine.{Postgres, Spark}
+import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
 import gr.cslab.ece.ntua.musqle.tools.ConfParser
 import org.apache.log4j.Logger
@@ -16,7 +16,7 @@ class MuSQLEContext(sparkSession: SparkSession) {
 
   val catalog = new Catalog(sparkSession, this)
 
-  def showTables: Unit = { getTableList.foreach(println)}
+  def showTables: Unit = { getTableList.foreach(println) }
 
   def getTableList: Seq[String] = {
     catalog.getTableMap.map { table =>
@@ -60,15 +60,14 @@ object test extends App{
     .config("spark.jars", "./jars/postgresql-9.4.1212.jre6.jar")
     .getOrCreate()
 
+
   Logger.getLogger("org").setLevel(Level.OFF)
   Logger.getLogger("akka").setLevel(Level.OFF)
 
 
   val mc = new MuSQLEContext(sparkSession)
-  val q2 = mc.query("select * from item, store_returns where i_item_sk = sr_item_sk and i_item_sk > 5")
-  q2.explain
-  println(q2.sqlString)
-  q2.execute.count
+  val post = new Postgres(sparkSession, mc)
 
-  //mc.query(FixedQueries.queries(0)._2).explain
+  val q1 = mc.query("select * from customer, nation, orders, lineitem where c_nationkey = n_nationkey and o_custkey = c_custkey and l_orderkey = o_orderkey")
+  q1.explain
 }

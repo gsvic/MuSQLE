@@ -7,14 +7,14 @@ import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.execution.datasources.LogicalRelation
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
-abstract class Engine(){
+abstract class Engine(val sparkSession: SparkSession, val mc: MuSQLEContext){
   val logger = Logger.getLogger(this.getClass)
   logger.setLevel(Level.OFF)
   override def equals(obj: scala.Any): Boolean = {
     this.getClass.equals(obj.getClass)
   }
 
-  def createView(plan: MuSQLEScan, srcTable: String, projection: String)
+  def createView(plan: MuSQLEScan, srcTable: String, path: String,projection: String)
   def inject(plan: DPJoinPlan)
   def supportsMove(engine: Engine): Boolean
   def move(dPJoinPlan: DPJoinPlan)

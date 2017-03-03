@@ -13,10 +13,9 @@ import scala.collection.mutable
 class SQLCodeGen(val info: MQueryInfo) {
 
   def genSQL(scan: MuSQLEScan): String = {
-    val tableName = matchTableName(scan.vertex.plan, this.info)
     val projection = {
       if (!scan.projections.isEmpty) {
-        scan.projections.reduceLeft(_ + ", " + _)
+        scan.projections.reduceLeft(_.toLowerCase + ", " + _.toLowerCase)
       }
       else { "*" }
     }
@@ -49,12 +48,11 @@ class SQLCodeGen(val info: MQueryInfo) {
     val conditions = subQueryTables.map(key => info.idToCondition(key))
     val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
-    val vertices = keys.map(attribute => info.attributeToVertex.get(attribute.toString()).get)
     val names = findTableNames(plan)
 
     val projection = {
       if (!plan.projections.isEmpty) {
-        plan.projections.reduceLeft(_ + ", " + _)
+        plan.projections.reduceLeft(_.toLowerCase + ", " + _.toLowerCase)
       }
       else { "*" }
     }
@@ -115,7 +113,7 @@ class SQLCodeGen(val info: MQueryInfo) {
 
   private def parseAggregateExpression(expression: Expression): String = {
     expression match {
-      case attRef: AttributeReference => attRef.toString.replace("#", "")
+      case attRef: AttributeReference => parseAttributeReference(attRef)
       case alias: Alias => {
         s"${parseAggregateExpression(alias.child)} AS ${alias.name}${alias.exprId.id}"
       }
@@ -153,13 +151,12 @@ class SQLCodeGen(val info: MQueryInfo) {
           }
           if (agg.groupingExpressions.size > 0) {
             groupBy = "GROUP BY " +agg.groupingExpressions
-                .map(exp => exp.toString()
-                .replace("#", ""))
+                .map(exp => parseAttributeReference(exp))
                 .reduceLeft(_ + ", " + _)
           }
         }
         case sort: Sort => {
-          orderBy = "ORDER BY "+sort.order.map(attr => attr.child.toString().replace("#", "")).reduceLeft(_ +", "+_)
+          orderBy = "ORDER BY "+sort.order.map(attr => parseAttributeReference(attr.child)).reduceLeft(_ +", "+_)
         }
         case _ => {}
       }
@@ -198,12 +195,10 @@ class SQLCodeGen(val info: MQueryInfo) {
         val left = {
           eq.left match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(eq.left.toString()).get.id
-              val key = ar.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case cast: Cast => {
-              cast.child.toString.replace("#","")
+              parseAttributeReference(cast.child)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -218,12 +213,10 @@ class SQLCodeGen(val info: MQueryInfo) {
         val right = {
           eq.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(eq.right.toString()).get.id
-              val key = ar.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case cast: Cast => {
-              cast.child.toString.replace("#","")
+              parseAttributeReference(cast.child)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -240,9 +233,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val left = {
         lt.left match{
           case ar: AttributeReference =>{
-            val id = info.attributeToVertex.get(lt.left.toString()).get.id
-            val key = lt.left.toString.replace("#","")
-            key
+            parseAttributeReference(ar)
           }
           case literal: Literal => {
             literal.dataType match {
@@ -256,9 +247,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val right = {
           lt.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(lt.right.toString()).get.id
-              val key = lt.right.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -275,9 +264,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val left = {
           gt.left match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(gt.left.toString()).get.id
-              val key = gt.left.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -291,9 +278,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val right = {
           gt.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(gt.right.toString()).get.id
-              val key = gt.right.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -310,9 +295,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val left = {
           ltoet.left match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(ltoet.left.toString()).get.id
-              val key = ltoet.left.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -326,9 +309,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val right = {
           ltoet.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(ltoet.right.toString()).get.id
-              val key = ltoet.right.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -345,9 +326,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val left = {
           gtoet.left match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(gtoet.left.toString()).get.id
-              val key = gtoet.left.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -361,9 +340,7 @@ class SQLCodeGen(val info: MQueryInfo) {
         val right = {
           gtoet.right match{
             case ar: AttributeReference =>{
-              val id = info.attributeToVertex.get(gtoet.right.toString()).get.id
-              val key = gtoet.right.toString.replace("#","")
-              key
+              parseAttributeReference(ar)
             }
             case literal: Literal => {
               literal.dataType match {
@@ -380,15 +357,13 @@ class SQLCodeGen(val info: MQueryInfo) {
       case or: Or => makeCondition(or.left) + " OR " + makeCondition(or.right)
       case notNull: IsNotNull => {
         val attribute = notNull.child.asInstanceOf[AttributeReference]
-        val id = info.attributeToVertex.get(attribute.toString()).get.id
-        val key = attribute.toString.replace("#", "")
+        val key = parseAttributeReference(attribute)
         s"$key IS NOT NULL"
       }
       case in: In => {
         val attribute = in.value.asInstanceOf[AttributeReference]
-        val id = info.attributeToVertex.get(attribute.toString()).get.id
         val list = s"(${in.list.map(_.sql).reduceLeft(_+ ", " + _)})"
-        val key = attribute.toString.replace("#", "")
+        val key = parseAttributeReference(attribute)
         val result = s"$key IN $list"
         result
       }
@@ -396,10 +371,15 @@ class SQLCodeGen(val info: MQueryInfo) {
     }
   }
 
+  private def parseAttributeReference(ar: Expression): String = {
+    val a = s"${ar.toString.replace("#","").toLowerCase}"
+    a
+  }
+
   private def extractKey(expr: Expression): String = {
     expr match {
-      case ar: AttributeReference => expr.toString.replace("#","")
-      case cast: Cast => cast.child.toString.replace("#","")
+      case ar: AttributeReference => parseAttributeReference(ar)
+      case cast: Cast => parseAttributeReference(cast.child)
       case literal: Literal => {
         literal.dataType match {
           case StringType => s"""'${literal.value}'"""

@@ -19,7 +19,8 @@ import scala.concurrent.{Await, Future}
 /**
   * Created by vic on 7/11/2016.
   */
-case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engine {
+case class Postgres(override val sparkSession: SparkSession, override val mc: MuSQLEContext)
+  extends Engine(sparkSession, mc) {
   val postgresHost = ConfParser.getConf("postgres.host").get
   val postgresPort = ConfParser.getConf("postgres.port").get
   val postgresDB = ConfParser.getConf("postgres.db").get
@@ -43,7 +44,7 @@ case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engin
     Await.result(connection.sendQuery(query), 20 seconds)
   }
 
-  override def createView(plan: MuSQLEScan, srcTable: String, projection: String): Unit = {
+  override def createView(plan: MuSQLEScan, srcTable: String, path: String,projection: String): Unit = {
     logger.info(s"Creating view ${plan.tmpName}")
     val viewQuery =
       s"""
@@ -82,6 +83,10 @@ case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engin
           row += "2.2 "
           table += s"${dt.name} real"
         }
+        case FloatType => {
+          row += "2.2 "
+          table += s"${dt.name} real"
+        }
         case x: DecimalType => {
           row += "2.2 "
           table += s"${dt.name} real"
@@ -115,7 +120,9 @@ case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engin
   }
 
   override def getCost(plan: DPJoinPlan): Double = {
-    getCostMetrics(plan).cost
+    val cost = getCostMetrics(plan).cost
+    logger.debug(s"Getting query cost: ${plan.toSQL}: ${cost}")
+    cost
   }
 
   override def supportsMove(engine: Engine): Boolean = true
@@ -175,8 +182,6 @@ case class Postgres(sparkSession: SparkSession, mc: MuSQLEContext) extends Engin
   }
 
   def getCostMetrics(plan: DPJoinPlan): CostMetrics = {
-    logger.debug(s"Getting query cost: ${plan.toSQL}")
-
     val start = System.currentTimeMillis()
     val future: Future[QueryResult] = connection.sendQuery(s"EXPLAIN ${plan.toSQL.replaceAll("`", "")}")
     val mapResult: Future[Any] = future.map(queryResult => queryResult.rows match {

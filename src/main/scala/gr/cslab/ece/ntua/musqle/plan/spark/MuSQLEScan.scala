@@ -5,11 +5,13 @@ import gr.cslab.ece.ntua.musqle.plan.hypergraph.Scan
 import gr.cslab.ece.ntua.musqle.sql.SQLCodeGen
 import org.apache.spark.sql.execution.datasources.{HadoopFsRelation, LogicalRelation}
 
-case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, override val info: MQueryInfo)
+case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, val path: String, override val info: MQueryInfo)
   extends Scan(vertex, engine, info){
-  val codeGen = new SQLCodeGen(info)
 
+  val codeGen = new SQLCodeGen(info)
+  val engines = engine.mc.catalog.tableEngines(vertex.plan)
   val tableName = codeGen.matchTableName(vertex.plan, info)
+
   vertex.plan.output.map(attr => attr.toString.replace("#", "")).foreach(this.projections.add)
   val projection = vertex.plan.output
     .map(attr => s"${attr.name} ${attr.toString.replace("#", "")}")
@@ -19,7 +21,7 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
     codeGen.genSQL(this)
   }
 
-  engine.createView(this, tableName, projection)
+  engine.createView(this, tableName, path, projection)
 
   override def toString: String = {
     s"MuSQLEScan: ${tableName}"

@@ -13,11 +13,10 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext) extends
-  DPhyp(moveClass = classOf[MuSQLEMove],scanClass = classOf[MuSQLEScan], joinClass = classOf[MuSQLEJoin]) {
+class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext) extends DPhyp() {
 
   this.dptable = new DPTable(Seq(Engine.SPARK(sparkSession, mc), Engine.POSTGRES(sparkSession, mc)))
-  override var queryInfo: QueryInfo = new MQueryInfo(catalog.planToTableName)
+  override var queryInfo: MQueryInfo = new MQueryInfo(catalog.planToTableName)
   var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
 
   Vertex.resetId
@@ -81,6 +80,7 @@ class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext
   private def addScan(logicalRelation: LogicalRelation, filter: Filter,
                       projections: mutable.HashSet[Attribute]): Unit ={
     val engines = catalog.tableEngines.get(logicalRelation).get
+
     val vertex = new SparkPlanVertex(logicalRelation,
       engines, filter, projections)
 

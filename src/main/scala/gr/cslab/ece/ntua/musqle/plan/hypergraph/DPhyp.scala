@@ -3,19 +3,18 @@ package gr.cslab.ece.ntua.musqle.plan.hypergraph
 import java.util
 
 import gr.cslab.ece.ntua.musqle.engine._
+import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.log4j.Logger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.HashSet
 
-abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
-                     val scanClass: Class[_] = classOf[Scan],
-                     val joinClass: Class[_] = classOf[Join]) {
+abstract class DPhyp {
 
-  protected var queryInfo: QueryInfo
+  protected var queryInfo: MQueryInfo
   protected var numberOfVertices: Int = 0
   protected var maxCoverage: Int = 0
-  protected final val location: util.HashMap[Int, util.List[Engine]] = new util.HashMap[Int, util.List[Engine]]()
+  protected final val location: util.HashMap[Int, Seq[(Engine, String)]] = new util.HashMap[Int, Seq[(Engine, String)]]()
   protected final val edgeGraph: util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]] =
     new util.TreeMap[Vertex, util.TreeMap[Int, util.BitSet]]
 
@@ -82,9 +81,8 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
       b.set(vertex.id)
 
       for (engine <- location.get(vertex.id)) {
-        val scan = (scanClass.getConstructors()(0)).newInstance(vertex, engine, queryInfo).asInstanceOf[Scan]
-        //val scan = new Scan(table = vertex, engine = engine)
-        dptable.checkAndPut(engine , b, scan)
+        val scan = new MuSQLEScan(vertex.asInstanceOf[SparkPlanVertex], engine._1, engine._2,queryInfo.asInstanceOf[MQueryInfo])
+        dptable.checkAndPut(engine._1 , b, scan)
       }
     }
 
@@ -188,8 +186,6 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
 
   protected def emitCsgCmp(s1: util.BitSet, s2: util.BitSet) {
     //System.out.println("EmitCsgCmp s1:" + s1 + " s2: " + s2)
-    val move = moveClass.getConstructors()(0)
-    val join = joinClass.getConstructors()(0)
     val vars: HashSet[Int] = findJoinVars(s1, s2)
     val s: util.BitSet = new util.BitSet(numberOfVertices)
     s.or(s1)
@@ -202,8 +198,7 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
           // leftSubPlan and rightSubPlan are on the same engine.
 
           // No move required
-          val r: DPJoinPlan = join.newInstance(leftSubPlan.getValue, rightSubPlan.getValue, vars,
-            leftSubPlan.getKey, queryInfo).asInstanceOf[Join]
+          val r: DPJoinPlan = new MuSQLEJoin(leftSubPlan.getValue, rightSubPlan.getValue, vars, leftSubPlan.getKey, queryInfo)
           //val r: DPJoinPlan = new Join(left = leftSubPlan.getValue, right = rightSubPlan.getValue, vars = vars, engine = leftSubPlan.getKey)
           dptable.checkAndPut(leftSubPlan.getKey, s, r)
         } else {
@@ -211,16 +206,15 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
 
           /* Move left to right - Checking if the left right engine support moving from right engine */
           if (rightSubPlan.getKey.supportsMove(leftSubPlan.getKey)) {
-            val m: DPJoinPlan = move.newInstance(leftSubPlan.getValue, rightSubPlan.getKey, queryInfo).asInstanceOf[Move]
-            val r: DPJoinPlan = join.newInstance(m, rightSubPlan.getValue, vars,
-              rightSubPlan.getKey, queryInfo).asInstanceOf[Join]
+            val m: DPJoinPlan = new MuSQLEMove(leftSubPlan.getValue, rightSubPlan.getKey, queryInfo)
+            val r: DPJoinPlan = new MuSQLEJoin(m, rightSubPlan.getValue, vars, rightSubPlan.getKey, queryInfo)
             dptable.checkAndPut(rightSubPlan.getKey, s, r)
           }
 
           /* Move right to left - Checking if the left right engine support moving from right engine */
           if (leftSubPlan.getKey.supportsMove(rightSubPlan.getKey)) {
-            val m = move.newInstance(rightSubPlan.getValue, leftSubPlan.getKey, queryInfo).asInstanceOf[Move]
-            val r = join.newInstance(leftSubPlan.getValue, m, vars, leftSubPlan.getKey, queryInfo).asInstanceOf[Join]
+            val m = new MuSQLEMove(rightSubPlan.getValue, leftSubPlan.getKey, queryInfo)
+            val r = new MuSQLEJoin(leftSubPlan.getValue, m, vars, leftSubPlan.getKey, queryInfo)
             dptable.checkAndPut(leftSubPlan.getKey, s, r)
           }
 
@@ -229,14 +223,14 @@ abstract class DPhyp(val moveClass: Class[_] = classOf[Move],
             var m1: DPJoinPlan = leftSubPlan.getValue
             var m2: DPJoinPlan = rightSubPlan.getValue
             if (!leftSubPlan.getKey.equals(engine) && engine.supportsMove(leftSubPlan.getKey)) {
-              m1 = move.newInstance(m1, engine, queryInfo).asInstanceOf[Move]
+              m1 = new MuSQLEMove(m1, engine, queryInfo)
             }
 
             if (!rightSubPlan.getKey.equals(engine) && engine.supportsMove(rightSubPlan.getKey)) {
-              m2 = move.newInstance(m2, engine, queryInfo).asInstanceOf[Move]
+              m2 = new MuSQLEMove(m2, engine, queryInfo)
             }
 
-            val r = join.newInstance(m1, m2, vars, engine, queryInfo).asInstanceOf[Join]
+            val r = new MuSQLEJoin(m1, m2, vars, engine, queryInfo)
             dptable.checkAndPut(engine, s, r)
           }
         }

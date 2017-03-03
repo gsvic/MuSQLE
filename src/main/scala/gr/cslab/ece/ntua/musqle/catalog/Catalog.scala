@@ -22,8 +22,9 @@ class Catalog(sparkSession: SparkSession, mc: MuSQLEContext) {
   val engines = new mutable.HashSet[Engine]()
   engines.add(Spark(sparkSession, mc))
   engines.add(Postgres(sparkSession, mc))
-  val tableEngines: mutable.HashMap[LogicalRelation, Seq[Engine]] =
-    new mutable.HashMap[LogicalRelation, Seq[Engine]]()
+
+  val tableEngines: mutable.HashMap[LogicalRelation, Seq[(Engine, String)]] =
+    new mutable.HashMap[LogicalRelation, Seq[(Engine, String)]]()
 
   private val pathToTable: mutable.HashMap[String, CatalogEntry] = new mutable.HashMap[String, CatalogEntry]()
   private val tableMap: mutable.HashMap[String, CatalogEntry] = {
@@ -36,36 +37,40 @@ class Catalog(sparkSession: SparkSession, mc: MuSQLEContext) {
 
     catalogFolder.list().foreach { entry =>
       if (entry.endsWith(".mt")) {
-          val lines = (new BufferedReader(new FileReader(s"./metastore/catalog/$entry"))).lines().toArray()
+          val lines = (new BufferedReader(new FileReader(s"./metastore/catalog/$entry"))).lines
+            .toArray.filter(line => !line.toString.startsWith("#"))
           val tEngines = lines
-            .map(str => mapper.readValue(str.toString, classOf[CatalogEntry]).engine)
+            .map(str => mapper.readValue(str.toString, classOf[CatalogEntry]))
             .map {e =>
-              e match {
-                case "spark" => Spark(sparkSession, mc)
-                case "postgres" => Postgres(sparkSession, mc)
+              val engine = e.engine match {
+                case "spark" => {
+                  (Spark(sparkSession, mc), e.tablePath)
+                }
+                case "postgres" => (Postgres(sparkSession, mc), e.tablePath)
               }
+              pathToTable.put(e.tablePath, e)
+              engine
             }
 
           val str = lines(0)
           val catalogRecord = mapper.readValue(str.toString, classOf[CatalogEntry])
-          pathToTable.put(catalogRecord.tablePath, catalogRecord)
+          //pathToTable.put(catalogRecord.tablePath, catalogRecord)
           tables.put(catalogRecord.tableName, catalogRecord)
 
           val tableDF = {
             catalogRecord.engine match {
               case "spark" => {
                 val df = sparkSession.read.format(catalogRecord.format).load(catalogRecord.tablePath)
-                tableEngines.put(df.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tEngines)
                 df
               }
               case "postgres" => {
                 val post = Engine.POSTGRES(sparkSession, mc)
                 val df = sparkSession.read.jdbc(post.jdbcURL, catalogRecord.tablePath, post.props)
-                tableEngines.put(df.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tEngines)
                 df
               }
             }
           }
+
           tableEngines.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], tEngines)
           this.planToTableName.put(tableDF.queryExecution.optimizedPlan.asInstanceOf[LogicalRelation], catalogRecord.tableName)
           tableDF.createOrReplaceTempView(catalogRecord.tableName)
