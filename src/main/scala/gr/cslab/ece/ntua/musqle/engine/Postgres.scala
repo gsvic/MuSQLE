@@ -145,6 +145,12 @@ case class Postgres(override val sparkSession: SparkSession, override val mc: Mu
     df
   }
 
+  override def rename(t1: String, t2: String): Unit = {
+    logger.info(s"Renaming $t1 to $t2")
+    val query = s"ALTER TABLE ${t1} RENAME TO ${t2}"
+    Await.result(connection.sendQuery(query), 5 seconds)
+  }
+
   override def toString: String = "PostgreSQL"
 
   def cleanResults() {

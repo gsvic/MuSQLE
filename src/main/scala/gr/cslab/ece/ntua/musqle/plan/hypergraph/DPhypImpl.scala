@@ -8,7 +8,7 @@ import scala.collection.mutable
 /**
   * An example DPhyp implementation
   */
-class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(){
+class DPhypImpl(scan: Class[_], move: Class[_], join: Class[_]) extends DPhyp(null){
   override var queryInfo: MQueryInfo = null
 
   val eng = Seq(Spark(null, null))

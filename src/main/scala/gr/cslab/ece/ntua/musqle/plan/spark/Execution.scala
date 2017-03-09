@@ -1,5 +1,6 @@
 package gr.cslab.ece.ntua.musqle.plan.spark
 
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
 import gr.cslab.ece.ntua.musqle.plan.hypergraph.DPJoinPlan
 import org.apache.log4j.Logger
 import org.apache.spark.sql.catalyst.encoders.RowEncoder
@@ -10,7 +11,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
   * The execution context
   * @param sparkSession: The current SparkSession
   */
-class Execution(sparkSession: SparkSession) {
+class Execution(mc: MuSQLEContext, sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[Execution])
 
   /** Executes a [[DPJoinPlan]] and returns the result as a Spark SQL [[DataFrame]] */
@@ -24,8 +25,10 @@ class Execution(sparkSession: SparkSession) {
 
     val df = plan.engine.getDF(sql)
     val musqlePlan = df.queryExecution.optimizedPlan
-
     val fixed = prepare(root, musqlePlan)
+
+    mc.cache.cacheResult(plan)
+    mc.cache.persistCache()
 
     new Dataset[Row](sparkSession, fixed, RowEncoder(df.queryExecution.analyzed.schema))
   }
@@ -56,6 +59,7 @@ class Execution(sparkSession: SparkSession) {
     if (plan.right != null) executeMovements(plan.right)
 
     if (plan.isInstanceOf[MuSQLEMove]) {
+      mc.cache.cacheResult(plan)
       plan.engine.move(plan)
     }
   }

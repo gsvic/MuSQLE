@@ -13,13 +13,13 @@ import scala.collection.mutable
   * @param sparkSession: The current SparkSession
   * @param optimizedPlan: The optimized query plan
   */
-class MuSQLEQuery(val sparkSession: SparkSession, optimizedPlan: DPJoinPlan) {
+class MuSQLEQuery(val mc: MuSQLEContext, val sparkSession: SparkSession, val optimizedPlan: DPJoinPlan) {
   val sqlString: String = {
     optimizedPlan.toSQL
   }
 
   def execute: DataFrame = {
-    val executor = new Execution(sparkSession)
+    val executor = new Execution(mc, sparkSession)
     //pushDownProjections(optimizedPlan)
     val result = executor.execute(optimizedPlan)
 

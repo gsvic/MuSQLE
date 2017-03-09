@@ -1,6 +1,8 @@
 package gr.cslab.ece.ntua.musqle.plan.hypergraph
 
 import gr.cslab.ece.ntua.musqle.engine.Engine
+import gr.cslab.ece.ntua.musqle.plan.spark.{MuSQLEJoin, MuSQLEScan}
+
 import scala.collection.mutable
 
 abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engine: Engine,
@@ -16,6 +18,28 @@ abstract class DPJoinPlan(val left: DPJoinPlan, val right: DPJoinPlan, val engin
   def explain() = println(this.print(""))
   def print(indent: String): String
   def getCost: Double
+
+  def getInterResults(): mutable.HashSet[DPJoinPlan] = { getInterResults(this) }
+
+  private def getInterResults(plan: DPJoinPlan): mutable.HashSet[DPJoinPlan] = {
+    val s = mutable.HashSet[DPJoinPlan]()
+    if (plan.isRoot) s.add(plan)
+    plan match {
+      case move: Move => mutable.HashSet(move)
+      case join: Join => s.union(getInterResults(plan.left)).union(getInterResults(plan.right))
+      case _ => mutable.HashSet.empty
+    }
+  }
+
+  def toAbstract(): AbstractPlan = { AbstractPlan(getVertices(this), Seq()) }
+
+  def getVertices(plan: DPJoinPlan): mutable.HashSet[String] = {
+    plan match {
+      case scan: MuSQLEScan => mutable.HashSet(scan.tableName)
+      case join: MuSQLEJoin => getVertices(join.left) ++ getVertices(join.right)
+      case move: Move => getVertices(move.left)
+    }
+  }
 }
 
 object DPJoinPlan{

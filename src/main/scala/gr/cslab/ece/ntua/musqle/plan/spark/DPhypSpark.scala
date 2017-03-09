@@ -13,11 +13,11 @@ import org.apache.spark.sql.execution.datasources.LogicalRelation
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 
-class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext) extends DPhyp() {
+class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext) extends DPhyp(mc) {
 
   this.dptable = new DPTable(Seq(Engine.SPARK(sparkSession, mc), Engine.POSTGRES(sparkSession, mc)))
   override var queryInfo: MQueryInfo = new MQueryInfo(catalog.planToTableName)
-  var qInfo: MQueryInfo = queryInfo.asInstanceOf[MQueryInfo]
+  var qInfo: MQueryInfo = queryInfo
 
   Vertex.resetId
   DPJoinPlan.zeroResultNumber
@@ -60,7 +60,7 @@ class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext
     logical match {
       /* Setting up vertices */
       case logicalRelation: LogicalRelation => {
-        addScan(logicalRelation, null, finalProjections)
+        addScan(logicalRelation, finalProjections)
       }
       case filter: Filter => {
         addScan(filter.child.asInstanceOf[LogicalRelation], filter, finalProjections)
@@ -75,6 +75,10 @@ class DPhypSpark(sparkSession: SparkSession, catalog: Catalog, mc: MuSQLEContext
 
   def setLogicalPlan(logicalPlan: LogicalPlan): Unit ={
     this.qInfo.rootLogicalPlan = logicalPlan
+  }
+
+  private def addScan(logicalRelation: LogicalRelation, projections: mutable.HashSet[Attribute]): Unit = {
+    addScan(logicalRelation, null, projections)
   }
 
   private def addScan(logicalRelation: LogicalRelation, filter: Filter,

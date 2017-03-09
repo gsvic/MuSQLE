@@ -37,7 +37,9 @@ case class Spark(override val sparkSession: SparkSession, override val mc: MuSQL
   }
   override def move(move: DPJoinPlan): Unit = {
     logger.info(s"Moving ${move.tmpName}")
-    move.left.engine.getDF(move.toSQL).createOrReplaceTempView(move.tmpName)
+    val df = move.left.engine.getDF(move.toSQL)
+    df.createOrReplaceTempView(move.tmpName)
+    df.cache()
   }
   override def getMoveCost(plan: DPJoinPlan): Double = 0.0
 
@@ -52,7 +54,7 @@ case class Spark(override val sparkSession: SparkSession, override val mc: MuSQL
     val cost = plan match {
       case _ => {
         val start = System.currentTimeMillis()
-        val c = costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
+        val c = 30.0//costEstimator.getCostMetrics(sparkSession.sql(plan.toSQL)).totalCost
         Spark.totalGetCost += (System.currentTimeMillis() - start) / 1000.0
 
         c
@@ -68,6 +70,10 @@ case class Spark(override val sparkSession: SparkSession, override val mc: MuSQL
     costEstimator.getCostMetrics(df).rows
   }
   override def getDF(sql: String): DataFrame = sparkSession.sql(sql)
+
+  override def rename(t1: String, t2: String): Unit = {
+    logger.info(s"Renaming $t1 to $t2")
+  }
   override def toString: String = {"SparkSQL"}
 }
 

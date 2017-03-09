@@ -4,16 +4,21 @@ import gr.cslab.ece.ntua.musqle.catalog.Catalog
 import gr.cslab.ece.ntua.musqle.spark.DPhypSpark
 import org.apache.spark.sql.SparkSession
 import gr.cslab.ece.ntua.musqle.engine.{Engine, Postgres, Spark}
+import gr.cslab.ece.ntua.musqle.plan.Cache
+import gr.cslab.ece.ntua.musqle.plan.hypergraph.AbstractPlan
 import gr.cslab.ece.ntua.musqle.plan.spark.MuSQLEMove
 import gr.cslab.ece.ntua.musqle.tools.ConfParser
 import org.apache.log4j.Logger
 import org.apache.log4j.Level
 import org.apache.spark.SparkContext
 
+import scala.collection.mutable
+
 class MuSQLEContext(sparkSession: SparkSession) {
   val logger = Logger.getLogger(classOf[MuSQLEContext])
   logger.setLevel(Level.DEBUG)
 
+  val cache = new Cache
   val catalog = new Catalog(sparkSession, this)
 
   def showTables: Unit = { getTableList.foreach(println) }
@@ -43,12 +48,24 @@ class MuSQLEContext(sparkSession: SparkSession) {
     logger.debug(s"Spark getCost time: ${Spark.totalGetCost}")
     logger.debug(s"Postgres getCost time: ${Postgres.totalGetCost}")
 
-    new MuSQLEQuery(sparkSession, p)
+    new MuSQLEQuery(this, sparkSession, p)
   }
 
 }
 
-object test extends App{
+object kati {
+  val s1 = mutable.HashSet("customer", "nation")
+  val s2 = mutable.HashSet("nation", "customer")
+
+  val a1 = AbstractPlan(s1, null)
+  val a2 = AbstractPlan(s2, null)
+
+  val eq = a1.equals(a2)
+
+  println(eq)
+}
+
+object test extends App {
   SparkContext
   lazy val sparkSession = SparkSession
     .builder()
@@ -68,6 +85,63 @@ object test extends App{
   val mc = new MuSQLEContext(sparkSession)
   val post = new Postgres(sparkSession, mc)
 
-  val q1 = mc.query("select * from customer, nation, orders, lineitem where c_nationkey = n_nationkey and o_custkey = c_custkey and l_orderkey = o_orderkey")
+  val tpch3 =
+    """
+      |select
+      |	l_orderkey,
+      |	sum(l_extendedprice * (1 - l_discount)) as revenue,
+      |	o_orderdate,
+      |	o_shippriority
+      |from
+      |	customer,
+      |	orders,
+      |	lineitem
+      |where
+      |	c_mktsegment = 'AUTOMOBILE'
+      |	and c_custkey = o_custkey
+      |	and l_orderkey = o_orderkey
+      |group by
+      |	l_orderkey,
+      |	o_orderdate,
+      |	o_shippriority
+      |order by
+      |	revenue desc,
+      |	o_orderdate
+    """.stripMargin
+
+  val tpch5 =
+    """
+      |select
+      |	n_name,
+      |	sum(l_extendedprice * (1 - l_discount)) as revenue
+      |from
+      |	customer,
+      |	orders,
+      |	lineitem,
+      |	supplier,
+      |	nation,
+      |	region
+      |where
+      |	c_custkey = o_custkey
+      |	and l_orderkey = o_orderkey
+      |	and l_suppkey = s_suppkey
+      |	and c_nationkey = s_nationkey
+      |	and s_nationkey = n_nationkey
+      |	and n_regionkey = r_regionkey
+      |	and r_name = 'MIDDLE EAST'
+      |group by
+      |	n_name
+      |order by
+      |	revenue desc
+    """.stripMargin
+
+  val q1 = mc.query(tpch3)
   q1.explain
+  q1.execute
+
+  val q2 = mc.query(tpch5)
+  q2.explain
+  q2.execute
+
+
 }

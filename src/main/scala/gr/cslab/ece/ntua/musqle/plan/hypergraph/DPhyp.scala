@@ -2,14 +2,16 @@ package gr.cslab.ece.ntua.musqle.plan.hypergraph
 
 import java.util
 
+import gr.cslab.ece.ntua.musqle.MuSQLEContext
 import gr.cslab.ece.ntua.musqle.engine._
+import gr.cslab.ece.ntua.musqle.plan.Cache
 import gr.cslab.ece.ntua.musqle.plan.spark._
 import org.apache.log4j.Logger
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable.HashSet
 
-abstract class DPhyp {
+abstract class DPhyp(mc: MuSQLEContext) {
 
   protected var queryInfo: MQueryInfo
   protected var numberOfVertices: Int = 0
@@ -81,7 +83,8 @@ abstract class DPhyp {
       b.set(vertex.id)
 
       for (engine <- location.get(vertex.id)) {
-        val scan = new MuSQLEScan(vertex.asInstanceOf[SparkPlanVertex], engine._1, engine._2,queryInfo.asInstanceOf[MQueryInfo])
+        val scan = new MuSQLEScan(vertex.asInstanceOf[SparkPlanVertex], engine._1, engine._2,queryInfo)
+        mc.cache.hit(scan.toAbstract())
         dptable.checkAndPut(engine._1 , b, scan)
       }
     }
@@ -194,6 +197,11 @@ abstract class DPhyp {
 
     for (leftSubPlan <- dptable.getAllPlans(s1).entrySet) {
       for (rightSubPlan <- dptable.getAllPlans(s2).entrySet) {
+
+        val candidate = new MuSQLEJoin(leftSubPlan.getValue, rightSubPlan.getValue, vars, leftSubPlan.getKey, queryInfo)
+        val cache = mc.cache
+        cache.hit(candidate.toAbstract())
+
         if (leftSubPlan.getKey.equals(rightSubPlan.getKey)) {
           // leftSubPlan and rightSubPlan are on the same engine.
 

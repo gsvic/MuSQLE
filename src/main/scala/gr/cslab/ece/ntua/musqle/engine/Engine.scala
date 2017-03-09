@@ -23,6 +23,7 @@ abstract class Engine(val sparkSession: SparkSession, val mc: MuSQLEContext){
   def getRowsEstimation(plan: DPJoinPlan): Long
   def getDF(sql: String): DataFrame
   def cleanTmpResults: Unit = {}
+  def rename(t1: String, t2: String): Unit = {}
 }
 
 class HDFSFormat()

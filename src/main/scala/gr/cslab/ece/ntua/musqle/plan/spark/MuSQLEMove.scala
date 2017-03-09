@@ -16,6 +16,10 @@ case class MuSQLEMove(val plan: DPJoinPlan, val destEngine: Engine, override val
   destEngine.inject(this)
   val end = System.currentTimeMillis() - start
   MuSQLEMove.totalInject += end / 1000.0
+
+  override def toString: String = {
+    s"Move [${plan}](${plan.engine} -> ${this.engine})"
+  }
 }
 
 object MuSQLEMove{

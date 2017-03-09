@@ -9,7 +9,6 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
   extends Scan(vertex, engine, info){
 
   val codeGen = new SQLCodeGen(info)
-  val engines = engine.mc.catalog.tableEngines(vertex.plan)
   val tableName = codeGen.matchTableName(vertex.plan, info)
 
   vertex.plan.output.map(attr => attr.toString.replace("#", "")).foreach(this.projections.add)
@@ -24,6 +23,6 @@ case class MuSQLEScan(val vertex: SparkPlanVertex, override val engine: Engine, 
   engine.createView(this, tableName, path, projection)
 
   override def toString: String = {
-    s"MuSQLEScan: ${tableName}"
+    s"MuSQLEScan: [${tableName}@${engine}]"
   }
 }

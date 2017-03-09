@@ -46,7 +46,6 @@ class SQLCodeGen(val info: MQueryInfo) {
   def genSQL(plan: MuSQLEJoin): String = {
     val subQueryTables = findJoinKeys(plan)
     val conditions = subQueryTables.map(key => info.idToCondition(key))
-    val keys = subQueryTables.flatMap(key => info.idToCondition(key).references.map(_.asInstanceOf[AttributeReference]))
     val filters = findFiltersInSubQuery(plan)
     val names = findTableNames(plan)
 
